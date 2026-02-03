@@ -7,12 +7,12 @@ $env.PGT_LOG_PATH = $"($env.HOME)/.cache/postgrestools-pg-log"
 $env.BUN_INSTALL = $"($env.HOME)/.bun"
 
 # Configuração de completions externas para bun run (scripts + arquivos)
-use modules/completions
+use modules/completions [external_completer]
 
 $env.config.completions.external = {
     enable: true
     max_results: 100
-    completer: {|spans| completions external_completer $spans }
+    completer: {|spans| external_completer $spans }
 }
 
 source ~/.zoxide.nu
