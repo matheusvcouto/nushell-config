@@ -1,10 +1,7 @@
 $env.config.show_banner = false
-$env.EDITOR = "code"
+
 alias ll = ls -l
 alias n = nvim
-
-$env.PGT_LOG_PATH = $"($env.HOME)/.cache/postgrestools-pg-log"
-$env.BUN_INSTALL = $"($env.HOME)/.bun"
 
 # Configuração de completions externas para bun run (scripts + arquivos)
 use modules/completions [external_completer]
@@ -16,6 +13,24 @@ $env.config.completions.external = {
 }
 
 source ~/.zoxide.nu
+
+
+# experimental
+
+# Define comandos inteligentes baseados no OS
+let clipboard_command = (
+    if ($nu.os-info.name == "windows") { 
+        { copy: "clip.exe", paste: "powershell -command Get-Clipboard" }
+    } else if ($nu.os-info.name == "macos") { 
+        { copy: "pbcopy", paste: "pbpaste" }
+    } else { 
+        { copy: "xclip -sel clip", paste: "xclip -sel clip -o" }
+    }
+)
+
+# Cria os aliases usando a definição acima
+alias copy = ^$clipboard_command.copy
+alias paste = ^$clipboard_command.paste
 
 #
 # Installed by:

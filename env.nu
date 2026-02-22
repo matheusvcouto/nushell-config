@@ -13,5 +13,16 @@ if ($env_file | path exists) {
     | load-env
 }
 
-# Test environment variable
-$env.TESTE_NUSH = "valor_teste"
+# Editor
+$env.EDITOR = "code"
+
+# Android SDK
+$env.ANDROID_HOME = $"($env.HOME)/Library/Android/sdk"
+$env.PATH = ($env.PATH | split row (char esep) | append [$"($env.ANDROID_HOME)/emulator", $"($env.ANDROID_HOME)/platform-tools"] | str join (char esep))
+
+# Bun
+$env.BUN_INSTALL = $"($env.HOME)/.bun"
+$env.PATH = ($env.PATH | split row (char esep) | append $"($env.BUN_INSTALL)/bin" | str join (char esep))
+
+# Tools
+$env.PGT_LOG_PATH = $"($env.HOME)/.cache/postgrestools-pg-log"
