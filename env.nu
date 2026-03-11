@@ -13,11 +13,15 @@ if ($env_file | path exists) {
     | load-env
 }
 
+# Git
+$env.GIT_EDITOR = "hx"
+
 # Editor
 $env.EDITOR = "code"
 
 # Android SDK
 $env.ANDROID_HOME = $"($env.HOME)/Library/Android/sdk"
+$env.ANDROID_EMULATOR_DEFAULT_AVD = "Pixel_9"
 $env.PATH = ($env.PATH | split row (char esep) | append [$"($env.ANDROID_HOME)/emulator", $"($env.ANDROID_HOME)/platform-tools"] | str join (char esep))
 
 # Bun
