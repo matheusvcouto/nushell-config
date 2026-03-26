@@ -1,11 +1,13 @@
 # modules/completions.nu
 
 use ./bun.nu  [bun_completer]
+use ./mise.nu [mise_completer]
 
 # Registo de completers modulares
 export def external_completer [spans: list<string>] {
     # Registo de completers modulares
     let completers = [
+        {|spans| mise_completer $spans }
         {|spans| bun_completer $spans }
         # Adicione novos completers aqui no futuro
     ]

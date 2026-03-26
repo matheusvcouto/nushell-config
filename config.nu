@@ -14,8 +14,8 @@ $env.config.completions.external = {
 
 source ~/.zoxide.nu
 
-# Mise (ativação oficial para Nushell)
-use ($nu.default-config-dir | path join mise.nu)
+# Mise (ativação oficial para Nushell sem sobrescrever o comando externo `mise`)
+source ($nu.default-config-dir | path join "mise.nu")
 
 
 # experimental
