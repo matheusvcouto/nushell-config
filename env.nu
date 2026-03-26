@@ -28,5 +28,13 @@ $env.PATH = ($env.PATH | split row (char esep) | append [$"($env.ANDROID_HOME)/e
 $env.BUN_INSTALL = $"($env.HOME)/.bun"
 $env.PATH = ($env.PATH | split row (char esep) | append $"($env.BUN_INSTALL)/bin" | str join (char esep))
 
+# Mise
+# 1) Shims no PATH para suportar execuções não interativas.
+$env.PATH = ($env.PATH | split row (char esep) | prepend $"($env.HOME)/.local/share/mise/shims" | str join (char esep))
+
+# 2) Gera o módulo de ativação oficial do Nushell.
+let mise_path = $nu.default-config-dir | path join "mise.nu"
+^mise activate nu | save $mise_path --force
+
 # Tools
 $env.PGT_LOG_PATH = $"($env.HOME)/.cache/postgrestools-pg-log"

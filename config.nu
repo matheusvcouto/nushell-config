@@ -14,6 +14,9 @@ $env.config.completions.external = {
 
 source ~/.zoxide.nu
 
+# Mise (ativação oficial para Nushell)
+use ($nu.default-config-dir | path join mise.nu)
+
 
 # experimental
 
@@ -32,7 +35,57 @@ let clipboard_command = (
 alias copy = ^$clipboard_command.copy
 alias paste = ^$clipboard_command.paste
 
-#
+def --env vim-toggle [] {
+  if $env.config.edit_mode == 'vi' {
+    $env.config.edit_mode = 'emacs'
+    print 'edit_mode: emacs'
+  } else {
+    $env.config.edit_mode = 'vi'
+    print 'edit_mode: vi'
+  }
+}
+alias vt = vim-toggle
+$env.config.cursor_shape = {
+  emacs: block
+  vi_insert: line
+  vi_normal: block
+}
+
+def crc32-py [
+  text?: string
+] {
+  let value = if $text != null {
+    $text
+  } else {
+    $in | into string | str trim
+  }
+
+  uv run python -c "import sys, zlib; print(zlib.crc32(sys.argv[1].encode('utf-8')))" $value
+}
+
+def crc32-bun [
+  text?: string
+] {
+  let value = if $text != null {
+    $text
+  } else {
+    $in | into string | str trim
+  }
+
+  bun -e "
+    const s = process.argv[1];
+    let c = -1;
+    for (let i = 0; i < s.length; i++) {
+      c ^= s.charCodeAt(i);
+      for (let j = 0; j < 8; j++) {
+        c = (c >>> 1) ^ (0xEDB88320 & -(c & 1));
+      }
+    }
+    console.log((c ^ -1) >>> 0);
+  " $value
+}
+
+
 # Installed by:
 # version = "0.110.0"
 #
