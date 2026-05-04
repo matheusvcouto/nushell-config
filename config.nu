@@ -85,7 +85,7 @@ def crc32-bun [
   " $value
 }
 
-def confirm-password [
+def verify-password [
   prompt: string = "Digite"
   confirm_prompt: string = "Confirme"
 ] {
