@@ -85,6 +85,21 @@ def crc32-bun [
   " $value
 }
 
+def confirm-password [
+  prompt: string = "Digite"
+  confirm_prompt: string = "Confirme"
+] {
+  let s1 = (input --suppress-output $"($prompt): ")
+  let s2 = (input --suppress-output $"($confirm_prompt): ")
+
+  if $s1 == $s2 {
+    print "✓ senhas iguais"
+    $s1
+  } else {
+    error make {msg: "senhas diferentes"}
+  }
+}
+
 
 # Installed by:
 # version = "0.110.0"
