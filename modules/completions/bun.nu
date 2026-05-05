@@ -33,9 +33,9 @@ export def bun_completer [spans: list<string>] {
             []
         })
         
-        # 2. Arquivos (TS/JS/TSX) com exclusão robusta
+        # 2. Arquivos (TS/JS/TSX/MD) com exclusão robusta
         # Glob patterns para buscar arquivos relevantes
-        let raw_files = (glob "**/*.{ts,js,tsx}" --depth 4)
+        let raw_files = (glob "**/*.{ts,js,tsx,md}" --depth 4)
         
         let filtered_files = ($raw_files | each {|file|
             let relative = ($file | path relative-to $env.PWD | str replace --all "\\" "/")
