@@ -2,6 +2,7 @@
 
 use ./bun.nu  [bun_completer]
 use ./mise.nu [mise_completer]
+use ./nvim.nu [nvim_completer]
 
 # Registo de completers modulares
 export def external_completer [spans: list<string>] {
@@ -9,6 +10,7 @@ export def external_completer [spans: list<string>] {
     let completers = [
         {|spans| mise_completer $spans }
         {|spans| bun_completer $spans }
+        {|spans| nvim_completer $spans }
         # Adicione novos completers aqui no futuro
     ]
 
