@@ -26,7 +26,7 @@ if ($env_file | path exists) {
 }
 
 # Git
-$env.GIT_EDITOR = "hx"
+$env.GIT_EDITOR = "nvim"
 
 # Editor
 $env.EDITOR = "code"

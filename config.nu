@@ -1,4 +1,5 @@
 $env.config.show_banner = false
+$env.config.buffer_editor = "nvim"
 
 alias ll = ls -l
 alias n = nvim
