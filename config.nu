@@ -6,10 +6,7 @@ alias n = nvim
 
 # Configuração de completions externas para bun run (scripts + arquivos)
 use modules/completions [external_completer]
-use modules/ai_profiles [
-    ai-profile
-    "ai-profile run"
-]
+use modules/ai_profiles [ai-profile]
 
 $env.config.completions.external = {
     enable: true

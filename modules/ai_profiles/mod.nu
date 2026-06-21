@@ -1,10 +1,12 @@
 # Isolated account profiles for AI CLIs.
 #
-# Dois pontos de entrada, ambos genéricos (lêem TOOLS, nenhum código
-# duplicado por CLI):
+# Um único comando genérico (lê TOOLS, nenhum código duplicado por CLI):
 #
-#   ai-profile run <tool> <profile> ...args   -- roda a CLI isolada
-#   ai-profile <tool> [list|new|rename|delete] ...
+#   ai-profile <tool> list
+#   ai-profile <tool> new <nome>
+#   ai-profile <tool> rename <antigo> <novo>
+#   ai-profile <tool> delete <nome>
+#   ai-profile <tool> run <perfil> ...args     -- roda a CLI isolada
 #
 # Pra adicionar uma CLI nova, só uma entrada em TOOLS (ver abaixo) — nenhum
 # comando novo precisa ser escrito.
@@ -21,6 +23,8 @@
 # reaproveitado para nada visível, renomear um alias nunca precisa mover ou
 # tocar a pasta — e como o ID nunca aparece em mais nenhum lugar, um
 # `ls ~/.ai-profiles` não fica com nomes "errados" depois de um rename.
+
+use ../utils [safe-remove]
 
 const PROFILE_NAME_PATTERN = '^[A-Za-z0-9_-]+$'
 const PROFILES_ROOT = "~/.ai-profiles"
@@ -88,7 +92,7 @@ def nu-complete-tools [] {
 }
 
 def nu-complete-actions [] {
-    ["list" "new" "rename" "delete"]
+    ["list" "new" "rename" "delete" "run"]
 }
 
 # Completer usado pra qualquer argumento que represente um nome de perfil
@@ -274,7 +278,7 @@ def delete-profile [
         }
     }
 
-    rm --recursive --permanent $dir
+    safe-remove $dir (profiles-root-path)
 
     let entries = (
         read-profile-map
@@ -307,22 +311,18 @@ def run-tool-profile [
     }
 }
 
-# `ai-profile run` é resolvido pelo Nushell antes do `ai-profile` genérico
-# abaixo, porque é um nome de subcomando estático mais específico
-# ("ai-profile run" bate antes de "ai-profile" + dois args soltos).
-export def --wrapped "ai-profile run" [
-    tool: string@nu-complete-tools
-    profile: string@nu-complete-profile-arg
-    ...args
-] {
-    run-tool-profile $tool $profile $args
-}
-
-export def "ai-profile" [
+# --wrapped é necessário pro "run" poder repassar flags soltas (ex: --print
+# "oi") direto pra CLI de verdade, sem o Nushell tentar interpretá-las como
+# flags do próprio ai-profile. tool/action continuam posicionais tipados com
+# completer normal — --wrapped só afeta como os tokens finais (...rest) são
+# tratados, não os primeiros argumentos.
+export def --wrapped "ai-profile" [
     tool: string@nu-complete-tools
     action: string@nu-complete-actions = "list"
     ...rest: string@nu-complete-profile-arg
 ] {
+    tool-spec $tool | ignore
+
     match $action {
         "list" => (profile-list $tool)
         "new" => {
@@ -347,9 +347,16 @@ export def "ai-profile" [
             }
             delete-profile $tool $name
         }
+        "run" => {
+            let profile = ($rest | get --optional 0)
+            if $profile == null {
+                error make { msg: "uso: ai-profile <tool> run <perfil> [...args]" }
+            }
+            run-tool-profile $tool $profile ($rest | skip 1)
+        }
         _ => {
             error make {
-                msg: $"Ação desconhecida: ($action). Use list, new, rename ou delete."
+                msg: $"Ação desconhecida: ($action). Use list, new, rename, delete ou run."
             }
         }
     }

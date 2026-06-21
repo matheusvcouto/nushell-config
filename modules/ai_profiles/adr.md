@@ -152,6 +152,29 @@ digitados, qual deles é um nome de CLI conhecido.
 Os comandos `claude-as`/`codex-as`/`claude-profile`/etc da revisão 4 foram
 removidos. Tudo passa por `ai-profile` e `ai-profile run`.
 
+## Decisão (revisão 6): `run` dentro do mesmo `ai-profile`, ordem `<tool> run <perfil>`
+
+A revisão 5 deixou `run` como um comando separado (`ai-profile run <tool>
+<perfil>`) só pra poder ser `--wrapped` (repassar flags soltas como
+`--print "oi"` direto pra CLI de verdade, sem o Nushell tentar interpretá
+-las como flags do `ai-profile`). Isso deixava a ordem inconsistente:
+`ai-profile run claude mae` mas `ai-profile claude rename ...` (tool em
+posições diferentes dependendo do comando).
+
+Usuário preferiu ordem consistente (`ai-profile <tool> run <perfil>
+...args`, tool sempre em primeiro) mesmo sabendo do tradeoff. Testado e
+confirmado: dá pra ter os dois ao mesmo tempo. `--wrapped` no `ai-profile`
+inteiro não rouba o completer dos primeiros posicionais (`tool`, `action`
+continuam com `string@completer` funcionando normalmente) — só evita que
+tokens finais com `--` sejam interpretados como flags do próprio
+`ai-profile`. Confirmado com teste direto (`ai-profile claude run mae
+--print "oi" --foo` chega em `rest` intacto, sem erro de "unknown flag").
+
+`run` virou só mais um caso do `match $action` (junto com
+list/new/rename/delete), usando `$rest | get 0` como nome do perfil e
+`$rest | skip 1` como args da CLI. Removido o comando separado
+`"ai-profile run"`.
+
 ## Alternativas consideradas
 
 - **Diretório nomeado igual ao alias original** (revisão 1, descrita
