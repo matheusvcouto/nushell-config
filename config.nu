@@ -6,6 +6,7 @@ alias n = nvim
 
 # Configuração de completions externas para bun run (scripts + arquivos)
 use modules/completions [external_completer]
+use modules/ai_profiles [claude-as codex-as]
 
 $env.config.completions.external = {
     enable: true
