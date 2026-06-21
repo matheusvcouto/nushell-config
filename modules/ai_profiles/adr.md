@@ -51,6 +51,37 @@ vê nem digita o ID — só o alias), não existe expectativa de que `ls
 ~/.ai-profiles` deva bater com o alias atual. Não há mais "nome desatualizado
 saltando aos olhos" porque não há mais nome ali, só um identificador interno.
 
+## Decisão (revisão 3): ID por timestamp + array de CLIs suportadas
+
+Dois ajustes adicionais pedidos pelo usuário:
+
+1. **ID opaco trocado de `random chars --length 10` para
+   `<timestamp>-<4 chars aleatórios>`** (ex:
+   `claude-20260621164706-0i2x`). Um UUID/ULID de verdade seria mais robusto,
+   mas implementar a codificação base32 Crockford do ULID à mão no Nushell
+   é mais código sem ganho prático aqui. O formato timestamp+sufixo dá a
+   mesma propriedade que se queria do ULID (ordenável, rastreável só pelo
+   nome) com poucas linhas, e a chance de colisão (mesma CLI, mesmo
+   segundo, mesmo sufixo de 4 chars) é desprezível pra esse uso.
+
+2. **`const TOOLS` array** como única fonte de verdade sobre quais CLIs o
+   módulo isola, cada entrada com `name`, `bin`, `config_env` (env var que a
+   CLI usa pra apontar o config dir) e `clear_env` (env vars de auth a
+   remover antes de rodar). Um `run-tool-profile` genérico monta o
+   `with-env` a partir dessa entrada e roda o binário — toda a lógica de
+   criar/listar/renomear/apagar perfil (`profile-list`, `create-profile`,
+   etc.) já era parametrizada por `tool: string`, então não precisou
+   duplicar nada além disso.
+   Adicionado `antigravity` (CLI `agy`) como prova: a CLI não tem uma env
+   var dedicada de config dir (usa `$HOME` direto), então `config_env` foi
+   setado como `"HOME"` — o override fica restrito ao processo filho dentro
+   do `with-env`, não vaza pro shell.
+   Limitação aceita: o Nushell exige nomes de `def` estáticos, então ainda é
+   preciso escrever os `export def antigravity-as` / `antigravity-profile
+   ...` à mão (cerca de 25 linhas, copiadas do bloco do `codex`) — o array
+   elimina a duplicação de *lógica*, não a necessidade de declarar os
+   comandos exportados em si.
+
 ## Alternativas consideradas
 
 - **Diretório nomeado igual ao alias original** (revisão 1, descrita

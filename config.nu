@@ -19,6 +19,12 @@ use modules/ai_profiles [
     "codex-profile new"
     "codex-profile rename"
     "codex-profile delete"
+    antigravity-as
+    antigravity-profile
+    "antigravity-profile list"
+    "antigravity-profile new"
+    "antigravity-profile rename"
+    "antigravity-profile delete"
 ]
 
 $env.config.completions.external = {
