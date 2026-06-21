@@ -46,13 +46,13 @@ def should-keep [relative: string] {
     }
 }
 
-def git-tracked-files [] {
+def git-files [] {
     let check = (^git rev-parse --is-inside-work-tree | complete)
     if $check.exit_code != 0 {
         return []
     }
 
-    ^git ls-files
+    ^git ls-files --cached --others --exclude-standard
     | lines
     | each {|line| normalize-path $line}
 }
@@ -64,6 +64,29 @@ def glob-files [depth: int] {
     | each {|file|
         let relative = ($file | path relative-to $env.PWD)
         normalize-path $relative
+    }
+}
+
+def env-files [depth: int] {
+    let root_env = (glob ".env*")
+    let nested_env = (glob "**/.env*" --depth $depth)
+
+    [$root_env $nested_env]
+    | flatten
+    | where {|p| ($p | path type) == "file"}
+    | each {|file|
+        let relative = ($file | path relative-to $env.PWD)
+        normalize-path $relative
+    }
+}
+
+def match-paths [paths: list<string>, needle: string] {
+    if ($needle | is-empty) {
+        $paths | first 120
+    } else {
+        $paths
+        | where {|path| ($path | str downcase) | str contains $needle}
+        | first 120
     }
 }
 
@@ -80,7 +103,7 @@ export def nvim_completer [spans: list<string>] {
         $spans.0
     })
 
-    if $real_cmd != "nvim" {
+    if not ($real_cmd in ["nvim" "n"]) {
         return null
     }
 
@@ -94,28 +117,24 @@ export def nvim_completer [spans: list<string>] {
     let depth = if ($partial | str contains "/") { 8 } else { 4 }
     let needle = ($partial | str downcase)
 
-    let tracked = (git-tracked-files | each {|p| {value: $p, description: "Git tracked", priority: 0}})
-    let discovered = (glob-files $depth | each {|p| {value: $p, description: "Workspace file", priority: 1}})
+    let git_paths = (git-files)
+    let discovered_paths = (if ($git_paths | is-empty) {
+        glob-files $depth
+    } else {
+        env-files $depth
+    })
+
+    let git_matches = (match-paths $git_paths $needle)
+    let discovered_matches = (match-paths $discovered_paths $needle)
 
     let candidates = (
-        [$tracked $discovered]
+        [$discovered_matches $git_matches]
         | flatten
-        | uniq-by value
-        | where {|opt| should-keep $opt.value}
+        | uniq
+        | where {|path| should-keep $path}
+        | first 100
     )
 
-    let matched = if ($needle | is-empty) {
-        $candidates
-    } else {
-        $candidates | where {|opt| ($opt.value | str downcase) | str contains $needle}
-    }
-
-    $matched | sort-by {|opt|
-        let depth = ($opt.value | split row "/" | length)
-        {
-            priority: ($opt.priority? | default 1),
-            depth: $depth,
-            name: $opt.value
-        }
-    }
+    $candidates
+    | each {|path| {value: $path, description: "Workspace file"}}
 }

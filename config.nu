@@ -8,13 +8,17 @@ alias n = nvim
 use modules/completions [external_completer]
 use modules/ai_profiles [
     claude-as
-    claude-profile-new
-    claude-profile-rename
-    claude-profiles
+    claude-profile
+    "claude-profile list"
+    "claude-profile new"
+    "claude-profile rename"
+    "claude-profile delete"
     codex-as
-    codex-profile-new
-    codex-profile-rename
-    codex-profiles
+    codex-profile
+    "codex-profile list"
+    "codex-profile new"
+    "codex-profile rename"
+    "codex-profile delete"
 ]
 
 $env.config.completions.external = {
