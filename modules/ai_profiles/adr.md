@@ -82,6 +82,48 @@ Dois ajustes adicionais pedidos pelo usuário:
    elimina a duplicação de *lógica*, não a necessidade de declarar os
    comandos exportados em si.
 
+## Decisão (revisão 4): `ai-as` genérico + alias por CLI
+
+Os 3 blocos `export def --wrapped <tool>-as` eram idênticos exceto pelo nome
+da CLI (6 linhas cada, só repassando pra `run-tool-profile`). Substituídos
+por um único `ai-as [tool, profile, ...args]` genérico, e cada
+`<tool>-as` virou só `export alias <tool>-as = ai-as <tool>`. Adicionar uma
+CLI nova agora exige: 1 entrada em TOOLS + 1 linha de alias (pra `-as`) + o
+bloco de subcomandos `<tool>-profile` (não eliminável — ver limitação
+abaixo) + import em `config.nu`.
+
+O autocomplete do segundo argumento de `ai-as` (`profile`) precisa saber
+qual `tool` já foi digitado. Quando chamado direto (`ai-as claude <tab>`) é
+trivial. Quando chamado via alias (`claude-as <tab>`), não há garantia de
+que o Nushell exponha ao completer o contexto já expandido (`ai-as claude
+`) em vez do texto literal digitado (`claude-as `) — não há como confirmar
+isso sem dirigir um Tab real numa sessão interativa, o que não é possível
+no ambiente onde essa decisão foi tomada. Por isso o completer
+(`nu-complete-profile-for-as`) trata os dois casos: primeiro tenta achar um
+nome de CLI conhecido nos tokens já digitados; se não achar, resolve o
+alias do primeiro token via `scope aliases` (a mesma técnica que
+`modules/completions/nvim.nu` já usa pra resolver `n` -> `nvim`) e tenta de
+novo a partir da expansão. Testado isoladamente chamando a função do
+completer com os dois formatos de contexto possíveis — ambos retornam a
+lista de perfis certa. **Não testado**: o Tab de verdade numa sessão
+interativa real, que é a única forma de confirmar 100% qual dos dois
+formatos o Nushell entrega.
+
+## Limitação aceita: subcomandos `<tool>-profile` não viraram genéricos
+
+Cogitado um `ai-profile [tool, action, ...rest]` único (alias `<tool>-profile
+= ai-profile <tool>`), mas o Nushell resolve subcomandos (`claude-profile
+rename`) por correspondência literal de texto no início da linha — um alias
+que insere `tool` no meio (entre `ai-profile` e `rename`) não tem como ser
+expresso como substituição de um único token contíguo. Ficou assim: cada
+`<tool>-profile {list,new,rename,delete}` continua sendo 4 one-liners
+explícitos por CLI, delegando para as funções genéricas
+(`profile-list`/`create-profile`/`rename-profile`/`delete-profile`, que já
+eram parametrizadas por `tool` desde a revisão anterior). Isso preserva
+completers diretos e simples (sem a ambiguidade de contexto do `ai-as`) ao
+custo de não eliminar 100% da repetição — manutenção considerada aceitável
+porque são linhas mecânicas de 1 linha cada, sem lógica duplicada.
+
 ## Alternativas consideradas
 
 - **Diretório nomeado igual ao alias original** (revisão 1, descrita

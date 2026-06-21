@@ -7,6 +7,7 @@ alias n = nvim
 # Configuração de completions externas para bun run (scripts + arquivos)
 use modules/completions [external_completer]
 use modules/ai_profiles [
+    ai-as
     claude-as
     claude-profile
     "claude-profile list"
