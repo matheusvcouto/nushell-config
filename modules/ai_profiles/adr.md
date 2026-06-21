@@ -109,20 +109,45 @@ lista de perfis certa. **Não testado**: o Tab de verdade numa sessão
 interativa real, que é a única forma de confirmar 100% qual dos dois
 formatos o Nushell entrega.
 
-## Limitação aceita: subcomandos `<tool>-profile` não viraram genéricos
+## Decisão (revisão 5, final): `ai-profile` único, tool como argumento, não como nome de comando
 
-Cogitado um `ai-profile [tool, action, ...rest]` único (alias `<tool>-profile
-= ai-profile <tool>`), mas o Nushell resolve subcomandos (`claude-profile
-rename`) por correspondência literal de texto no início da linha — um alias
-que insere `tool` no meio (entre `ai-profile` e `rename`) não tem como ser
-expresso como substituição de um único token contíguo. Ficou assim: cada
-`<tool>-profile {list,new,rename,delete}` continua sendo 4 one-liners
-explícitos por CLI, delegando para as funções genéricas
-(`profile-list`/`create-profile`/`rename-profile`/`delete-profile`, que já
-eram parametrizadas por `tool` desde a revisão anterior). Isso preserva
-completers diretos e simples (sem a ambiguidade de contexto do `ai-as`) ao
-custo de não eliminar 100% da repetição — manutenção considerada aceitável
-porque são linhas mecânicas de 1 linha cada, sem lógica duplicada.
+A revisão 4 concluiu (errado) que dava pra genericizar `ai-as` mas não os
+subcomandos `<tool>-profile`, porque "tool no meio do nome do subcomando"
+não dá pra expressar via alias. Isso é verdade, mas a saída não era abrir
+mão da genericidade — era parar de colocar `tool` dentro do *nome* do
+comando.
+
+Solução: `tool` é só o **primeiro argumento posicional**, nunca parte do
+nome do comando exportado. Dois comandos no total, cobrindo qualquer CLI
+presente em TOOLS sem nenhum código extra por CLI:
+
+- `ai-profile run <tool> <profile> ...args` — roda a CLI isolada.
+- `ai-profile <tool> [list|new|rename|delete] ...` — gerencia perfis
+  (`list` é o padrão se a ação for omitida).
+
+Truque que faz isso funcionar: `ai-profile run` é um nome de subcomando
+**estático** (sempre literalmente "run"), então o Nushell o reconhece e
+prioriza sobre o `ai-profile` genérico quando o segundo token digitado é
+exatamente "run" — testado diretamente (`ai-profile run claude mae --foo`
+cai no comando certo, `ai-profile claude list` cai no outro). Isso resolve
+de uma vez a limitação registrada na revisão 4: não precisa mais de NENHUM
+bloco de comando por CLI. Adicionar uma CLI nova agora é **só uma entrada
+em TOOLS** — nada mais.
+
+Tradeoff aceito: a ação (`list`/`new`/`rename`/`delete`) não é mais um
+subcomando nativo do Nushell, é uma string normal com completer próprio
+(`nu-complete-actions`). Funciona igual no Tab, só que via completer
+custom em vez de descoberta nativa de subcomando — sem diferença prática
+percebida ao digitar.
+
+O completer de nome de perfil (`nu-complete-profile-arg`) ficou mais
+simples que na revisão 4: como `tool` agora é sempre um argumento literal
+explícito (nunca escondido atrás de alias), não precisa mais da lógica
+dupla de "tenta direto, senão resolve alias" — só procura, nos tokens já
+digitados, qual deles é um nome de CLI conhecido.
+
+Os comandos `claude-as`/`codex-as`/`claude-profile`/etc da revisão 4 foram
+removidos. Tudo passa por `ai-profile` e `ai-profile run`.
 
 ## Alternativas consideradas
 

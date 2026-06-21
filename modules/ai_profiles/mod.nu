@@ -1,5 +1,14 @@
 # Isolated account profiles for AI CLIs.
 #
+# Dois pontos de entrada, ambos genéricos (lêem TOOLS, nenhum código
+# duplicado por CLI):
+#
+#   ai-profile run <tool> <profile> ...args   -- roda a CLI isolada
+#   ai-profile <tool> [list|new|rename|delete] ...
+#
+# Pra adicionar uma CLI nova, só uma entrada em TOOLS (ver abaixo) — nenhum
+# comando novo precisa ser escrito.
+#
 # Todos os perfis vivem dentro de PROFILES_ROOT, cada um numa pasta com ID
 # opaco (ex: ~/.ai-profiles/claude-20260621163245-x7k2). O "nome" que você
 # usa nos comandos (alias, ex: "mae") é só um rótulo guardado em
@@ -12,30 +21,20 @@
 # reaproveitado para nada visível, renomear um alias nunca precisa mover ou
 # tocar a pasta — e como o ID nunca aparece em mais nenhum lugar, um
 # `ls ~/.ai-profiles` não fica com nomes "errados" depois de um rename.
-#
-# Para adicionar uma CLI nova:
-#   1. Adicione uma entrada em TOOLS com:
-#      - name: nome curto usado nos comandos (ex: "claude" -> claude-as)
-#      - bin: binário a executar
-#      - config_env: env var que a CLI usa pra apontar seu diretório de
-#                     config (se a CLI não tiver uma var dedicada, "HOME"
-#                     funciona, mas isola só o processo filho, não afeta
-#                     o shell)
-#      - clear_env: env vars de auth/API key a remover antes de rodar, pra
-#                    não vazar credencial do perfil ativo do shell principal
-#   2. Copie o bloco "<tool>-profile" de outra CLI (list/new/rename/delete)
-#      trocando o nome — isso fica explícito porque o Nushell exige nomes de
-#      def estáticos para subcomandos, então não dá pra gerar a partir do
-#      array.
-#   3. Adicione uma linha `export alias <tool>-as = ai-as <tool>` no fim do
-#      arquivo. `ai-as` já é genérico (lê TOOLS), o alias só fixa o primeiro
-#      argumento.
-#   4. Importe os novos nomes em config.nu (lista do `use modules/ai_profiles`).
 
 const PROFILE_NAME_PATTERN = '^[A-Za-z0-9_-]+$'
 const PROFILES_ROOT = "~/.ai-profiles"
 const PROFILES_FILE = "~/.ai-profiles/index.nuon"
 
+# Cada entrada:
+#   - name: valor que você digita como <tool> (ex: "claude")
+#   - bin: binário a executar
+#   - config_env: env var que a CLI usa pra apontar seu diretório de config
+#                 (se a CLI não tiver uma var dedicada, "HOME" funciona, mas
+#                 isola só o processo filho rodado pelo with-env, não afeta
+#                 o resto do shell)
+#   - clear_env: env vars de auth/API key a remover antes de rodar, pra não
+#                vazar credencial do perfil ativo do shell principal
 const TOOLS = [
     {
         name: "claude"
@@ -58,7 +57,10 @@ const TOOLS = [
         clear_env: ["OPENAI_API_KEY"]
     }
     {
-        name: "antigravity"
+        # "agy" é o binário da CLI do produto Antigravity (Google). Usamos
+        # o nome do binário, não do produto, porque é isso que você digita
+        # pra rodar a CLI sozinha.
+        name: "agy"
         bin: "agy"
         # agy não tem uma env var dedicada de config dir (usa $HOME
         # diretamente). Sobrescrever HOME aqui só afeta o processo do agy
@@ -85,16 +87,22 @@ def nu-complete-tools [] {
     $TOOLS | get name
 }
 
-def nu-complete-claude-profiles [] {
-    profile-list "claude"
+def nu-complete-actions [] {
+    ["list" "new" "rename" "delete"]
 }
 
-def nu-complete-codex-profiles [] {
-    profile-list "codex"
-}
-
-def nu-complete-antigravity-profiles [] {
-    profile-list "antigravity"
+# Completer usado pra qualquer argumento que represente um nome de perfil
+# (no "run" e no "rename"/"delete" do ai-profile). Acha a CLI já digitada
+# olhando os tokens da linha — nesses comandos o tool é sempre um argumento
+# literal (não escondido atrás de alias), então não tem ambiguidade.
+def nu-complete-profile-arg [context: string] {
+    let tools = ($TOOLS | get name)
+    let tool = ($context | split row " " | where {|t| $t in $tools} | get --optional 0)
+    if $tool == null {
+        []
+    } else {
+        profile-list $tool
+    }
 }
 
 def profiles-root-path [] {
@@ -285,7 +293,7 @@ def delete-profile [
 }
 
 # Núcleo genérico de execução: monta o env isolado a partir da entrada em
-# TOOLS e roda o binário. Toda CLI nova passa por aqui — só muda o `tool`.
+# TOOLS e roda o binário. Toda CLI passa por aqui — só muda o `tool`.
 def run-tool-profile [
     tool: string
     profile: string
@@ -306,126 +314,50 @@ def run-tool-profile [
     }
 }
 
-# Completer do segundo argumento de `ai-as`/`<tool>-as`. Para descobrir qual
-# CLI já foi escolhida, primeiro olha os tokens já digitados (chamada direta
-# "ai-as claude ..."); se não achar, resolve o alias do primeiro token (ex:
-# "claude-as" -> "ai-as claude") do jeito que `nvim_completer` já faz neste
-# repositório, já que aliases não vêm expandidos no contexto do completer.
-def nu-complete-profile-for-as [context: string] {
-    let tools = ($TOOLS | get name)
-    let tokens = ($context | split row " ")
-
-    let direct = ($tokens | where {|t| $t in $tools} | get --optional 0)
-    if $direct != null {
-        return (profile-list $direct)
-    }
-
-    let first = ($tokens | get --optional 0)
-    let expansion = (scope aliases | where name == $first | get --optional 0.expansion)
-    if $expansion != null {
-        let via_alias = ($expansion | split row " " | where {|t| $t in $tools} | get --optional 0)
-        if $via_alias != null {
-            return (profile-list $via_alias)
-        }
-    }
-
-    []
-}
-
-export def --wrapped ai-as [
+# `ai-profile run` é resolvido pelo Nushell antes do `ai-profile` genérico
+# abaixo, porque é um nome de subcomando estático mais específico
+# ("ai-profile run" bate antes de "ai-profile" + dois args soltos).
+export def --wrapped "ai-profile run" [
     tool: string@nu-complete-tools
-    profile: string@nu-complete-profile-for-as
+    profile: string@nu-complete-profile-arg
     ...args
 ] {
     run-tool-profile $tool $profile $args
 }
 
-export def claude-profile [] {
-    profile-list "claude"
-}
-
-export def "claude-profile list" [] {
-    profile-list "claude"
-}
-
-export def "claude-profile new" [
-    profile: string
+export def "ai-profile" [
+    tool: string@nu-complete-tools
+    action: string@nu-complete-actions = "list"
+    ...rest: string@nu-complete-profile-arg
 ] {
-    create-profile "claude" $profile
+    match $action {
+        "list" => (profile-list $tool)
+        "new" => {
+            let name = ($rest | get --optional 0)
+            if $name == null {
+                error make { msg: "uso: ai-profile <tool> new <nome>" }
+            }
+            create-profile $tool $name
+        }
+        "rename" => {
+            let old = ($rest | get --optional 0)
+            let new = ($rest | get --optional 1)
+            if $old == null or $new == null {
+                error make { msg: "uso: ai-profile <tool> rename <antigo> <novo>" }
+            }
+            rename-profile $tool $old $new
+        }
+        "delete" => {
+            let name = ($rest | get --optional 0)
+            if $name == null {
+                error make { msg: "uso: ai-profile <tool> delete <nome>" }
+            }
+            delete-profile $tool $name
+        }
+        _ => {
+            error make {
+                msg: $"Ação desconhecida: ($action). Use list, new, rename ou delete."
+            }
+        }
+    }
 }
-
-export def "claude-profile rename" [
-    old: string@nu-complete-claude-profiles
-    new: string
-] {
-    rename-profile "claude" $old $new
-}
-
-export def "claude-profile delete" [
-    profile: string@nu-complete-claude-profiles
-] {
-    delete-profile "claude" $profile
-}
-
-export def codex-profile [] {
-    profile-list "codex"
-}
-
-export def "codex-profile list" [] {
-    profile-list "codex"
-}
-
-export def "codex-profile new" [
-    profile: string
-] {
-    create-profile "codex" $profile
-}
-
-export def "codex-profile rename" [
-    old: string@nu-complete-codex-profiles
-    new: string
-] {
-    rename-profile "codex" $old $new
-}
-
-export def "codex-profile delete" [
-    profile: string@nu-complete-codex-profiles
-] {
-    delete-profile "codex" $profile
-}
-
-export def antigravity-profile [] {
-    profile-list "antigravity"
-}
-
-export def "antigravity-profile list" [] {
-    profile-list "antigravity"
-}
-
-export def "antigravity-profile new" [
-    profile: string
-] {
-    create-profile "antigravity" $profile
-}
-
-export def "antigravity-profile rename" [
-    old: string@nu-complete-antigravity-profiles
-    new: string
-] {
-    rename-profile "antigravity" $old $new
-}
-
-export def "antigravity-profile delete" [
-    profile: string@nu-complete-antigravity-profiles
-] {
-    delete-profile "antigravity" $profile
-}
-
-# Atalhos "<tool>-as" de cada CLI: cada um é só um alias de ai-as com o
-# primeiro argumento (tool) já preenchido. Adicionar uma CLI nova = uma
-# entrada em TOOLS + uma linha de alias aqui (e o bloco de subcomandos
-# "<tool>-profile" acima, que precisa ficar explícito porque o Nushell exige
-# nomes de def estáticos para subcomandos).
-export alias claude-as = ai-as claude
-export alias codex-as = ai-as codex
-export alias antigravity-as = ai-as antigravity

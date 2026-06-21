@@ -7,25 +7,8 @@ alias n = nvim
 # Configuração de completions externas para bun run (scripts + arquivos)
 use modules/completions [external_completer]
 use modules/ai_profiles [
-    ai-as
-    claude-as
-    claude-profile
-    "claude-profile list"
-    "claude-profile new"
-    "claude-profile rename"
-    "claude-profile delete"
-    codex-as
-    codex-profile
-    "codex-profile list"
-    "codex-profile new"
-    "codex-profile rename"
-    "codex-profile delete"
-    antigravity-as
-    antigravity-profile
-    "antigravity-profile list"
-    "antigravity-profile new"
-    "antigravity-profile rename"
-    "antigravity-profile delete"
+    ai-profile
+    "ai-profile run"
 ]
 
 $env.config.completions.external = {
