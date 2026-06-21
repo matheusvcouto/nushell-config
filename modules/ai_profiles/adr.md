@@ -42,8 +42,11 @@ nenhum outro lugar (ex: `~/.ai-profiles/claude-a1izmccy2u`).
   `~/.ai-profiles/`, e registra a entrada no índice.
 - `claude-profile rename <old> <new>` só edita o campo `alias` da entrada
   existente (preserva `dir` e `created_at`). O diretório/ID nunca muda.
-- `claude-profile delete <alias>` move o diretório pra `~/.Trash` e remove a
-  entrada do índice.
+- `claude-profile delete <alias>` apaga o diretório e remove a entrada do
+  índice. (Revisão posterior: trocado de "mover pra `~/.Trash`" para
+  exclusão permanente direta — usuário relatou perfis apagados ficando
+  perdidos na lixeira do macOS, que não se limpa sozinha. `rm --recursive
+  --permanent` em vez de `mv` pra `~/.Trash`.)
 
 Por que isso resolve o problema de UX sem reabrir a questão de segurança:
 como o ID nunca aparece como "nome do perfil" em lugar nenhum (você nunca

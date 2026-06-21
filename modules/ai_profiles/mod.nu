@@ -258,7 +258,7 @@ def delete-profile [
     profile: string
 ] {
     let dir = (existing-profile-dir $tool $profile)
-    print $"Isso vai mover para a lixeira: ($dir)"
+    print $"Isso vai apagar permanentemente: ($dir)"
 
     let typed_profile = (input $"Digite o nome do perfil para confirmar: ")
     if $typed_profile != $profile {
@@ -274,14 +274,7 @@ def delete-profile [
         }
     }
 
-    let trash_dir = ("~/.Trash" | path expand)
-    mkdir $trash_dir
-
-    let deleted_at = (date now | format date "%Y%m%d-%H%M%S")
-    let trash_name = $"($dir | path basename)-($deleted_at)"
-    let trash_path = ($trash_dir | path join $trash_name)
-
-    mv $dir $trash_path
+    rm --recursive --permanent $dir
 
     let entries = (
         read-profile-map
@@ -289,7 +282,7 @@ def delete-profile [
     )
     write-profile-map $entries
 
-    $trash_path
+    $dir
 }
 
 # Núcleo genérico de execução: monta o env isolado a partir da entrada em
