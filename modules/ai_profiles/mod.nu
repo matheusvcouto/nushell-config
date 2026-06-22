@@ -7,9 +7,10 @@
 #   ai-profile <tool> rename <antigo> <novo>
 #   ai-profile <tool> delete <nome>
 #   ai-profile <tool> run <perfil> ...args     -- roda a CLI isolada
+#   ai-profile <tool> acp <perfil> ...args     -- lança o agente ACP isolado
 #
 # Pra adicionar uma CLI nova, só uma entrada em TOOLS (ver abaixo) — nenhum
-# comando novo precisa ser escrito.
+# comando novo precisa ser escrito. ACP é opcional por tool (campo `acp`).
 #
 # Todos os perfis vivem dentro de PROFILES_ROOT, cada um numa pasta com ID
 # opaco (ex: ~/.ai-profiles/claude-20260621163245-x7k2). O "nome" que você
@@ -39,6 +40,9 @@ const PROFILES_FILE = "~/.ai-profiles/index.nuon"
 #                 o resto do shell)
 #   - clear_env: env vars de auth/API key a remover antes de rodar, pra não
 #                vazar credencial do perfil ativo do shell principal
+#   - acp (opcional): {bin, args} do adapter ACP daquele tool. Presença =
+#                o tool é oferecido como agente ACP; ausência = não tem ACP.
+#                Lançado com o MESMO isolamento do `run`. Ver acp-integration.md.
 const TOOLS = [
     {
         name: "claude"
@@ -53,12 +57,18 @@ const TOOLS = [
             "CLAUDE_CODE_OAUTH_TOKEN"
             "ANTHROPIC_BASE_URL"
         ]
+        # adapter externo @agentclientprotocol/claude-agent-acp, embrulha o
+        # claude code → respeita CLAUDE_CONFIG_DIR, então isola por perfil.
+        acp: { bin: "claude-agent-acp", args: [] }
     }
     {
         name: "codex"
         bin: "codex"
         config_env: "CODEX_HOME"
         clear_env: ["OPENAI_API_KEY"]
+        # codex NÃO tem subcomando `codex acp` — o ACP é um binário
+        # separado `codex-acp`, que respeita CODEX_HOME.
+        acp: { bin: "codex-acp", args: [] }
     }
     {
         # "agy" é o binário da CLI do produto Antigravity (Google). Usamos
@@ -71,6 +81,8 @@ const TOOLS = [
         # rodado dentro do with-env, não o shell.
         config_env: "HOME"
         clear_env: ["ANTIGRAVITY_API_KEY"]
+        # sem campo `acp` → agy não é oferecido como agente ACP (não há
+        # adapter conhecido + ver dilema de credencial em agy-keychain-issue.md).
     }
 ]
 
@@ -92,7 +104,7 @@ def nu-complete-tools [] {
 }
 
 def nu-complete-actions [] {
-    ["list" "new" "rename" "delete" "run"]
+    ["list" "new" "rename" "delete" "run" "acp"]
 }
 
 # Completer usado pra qualquer argumento que represente um nome de perfil
@@ -311,6 +323,40 @@ def run-tool-profile [
     }
 }
 
+# Lança o adapter ACP do tool com o MESMO isolamento do run, mas:
+# - usa `exec` (substitui o processo nu) → stdin/stdout intocados, sinais
+#   entregues ao adapter, exit code propagado. ESSENCIAL pra ACP, que fala
+#   JSON-RPC por stdout: qualquer byte extra corromperia o stream.
+# - diagnóstico humano vai pra stderr (print -e), nunca stdout.
+# Ver acp-integration.md e a investigação registrada lá.
+def acp-tool-profile [
+    tool: string
+    profile: string
+    args: list<string>
+] {
+    let spec = (tool-spec $tool)
+    if ($spec.acp? | is-empty) {
+        error make {
+            msg: $"($tool) não tem ACP configurado — falta o campo acp em TOOLS"
+        }
+    }
+    let dir = (existing-profile-dir $tool $profile)
+
+    let overrides = (
+        $spec.clear_env
+        | reduce --fold {($spec.config_env): $dir} {|env_name, acc|
+            $acc | insert $env_name null
+        }
+    )
+
+    # stderr — stdout é reservado pro stream JSON-RPC do ACP.
+    print -e $"acp: ($spec.acp.bin) tool=($tool) profile=($profile)"
+
+    with-env $overrides {
+        exec $spec.acp.bin ...$spec.acp.args ...$args
+    }
+}
+
 # --wrapped é necessário pro "run" poder repassar flags soltas (ex: --print
 # "oi") direto pra CLI de verdade, sem o Nushell tentar interpretá-las como
 # flags do próprio ai-profile. tool/action continuam posicionais tipados com
@@ -354,9 +400,16 @@ export def --wrapped "ai-profile" [
             }
             run-tool-profile $tool $profile ($rest | skip 1)
         }
+        "acp" => {
+            let profile = ($rest | get --optional 0)
+            if $profile == null {
+                error make { msg: "uso: ai-profile <tool> acp <perfil> [...args]" }
+            }
+            acp-tool-profile $tool $profile ($rest | skip 1)
+        }
         _ => {
             error make {
-                msg: $"Ação desconhecida: ($action). Use list, new, rename, delete ou run."
+                msg: $"Ação desconhecida: ($action). Use list, new, rename, delete, run ou acp."
             }
         }
     }

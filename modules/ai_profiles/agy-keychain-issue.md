@@ -53,7 +53,7 @@ Achado o token salvo, em texto puro, dentro da pasta isolada do perfil:
 
 ```
 ~/.ai-profiles/agy-<id>/.gemini/antigravity-cli/antigravity-oauth-token
-{"token":{"access_token":"ya29.a0AT3oNZ88Nlsn_0rJmJYohNZoLH50-6R4v1G3sKsX...
+{"token":{"access_token":"ya29.<REDIGIDO>","refresh_token":"<REDIGIDO>",...}}
 ```
 
 Ou seja: o `agy` persiste a credencial real num **arquivo** (que está
@@ -124,4 +124,121 @@ bloqueio. A opção A foi desencorajada apesar de funcionar, porque
 introduz dependência de macOS e fragiliza o isolamento de `$HOME` que é a
 única ferramenta de isolamento disponível pra essa CLI especificamente.
 
-**Decisão final: pendente — aguardando o usuário escolher entre A/B/C.**
+---
+
+## ATUALIZAÇÃO (investigação aprofundada — corrige o entendimento acima)
+
+Uma investigação posterior (subagente, sem completar nenhum login real)
+mudou o entendimento da seção "Por que isso NÃO significa que o login
+falhou". O resumo "o token está em arquivo, keychain é só auxiliar" estava
+**incompleto/errado pro caso normal**. Achados:
+
+### A credencial real do agy é um item ÚNICO e GLOBAL do Keychain
+Quando o `agy` roda com `$HOME` real, ele autentica a partir do Keychain
+de login via **um único item generic-password**:
+
+> `service="gemini", account="antigravity"` — exatamente UM item, **sem
+> discriminador por conta**.
+
+Provas:
+- Com `$HOME` falso + symlink válido de `Library/Keychains` + **nenhum
+  arquivo de credencial** → autenticou (retornou a lista de modelos),
+  lendo do keychain.
+- Um `~/.gemini/oauth_creds.json` deliberadamente inválido foi **ignorado**
+  enquanto o item do keychain existia. **Keychain vence o arquivo.**
+
+Consequência: relocar config via `$HOME` (ou via a flag escondida
+`--gemini_dir=<path>`, que existe e isola config/estado/cache/conversas)
+**não isola a autenticação** — todos os perfis dividiriam o mesmo token do
+keychain global. Por isso o `$HOME` override sozinho não dá multi-conta
+"de verdade".
+
+### Existe a flag `--gemini_dir=<path>` (e `--app_data_dir`)
+Relocam tudo de config/estado/cache pra outro diretório — **menos a auth**.
+Não há env var (`XDG_*`, `AGY_*`, `ANTIGRAVITY_*`, `GEMINI_*`) que reloque
+config/token. `XDG_CONFIG_HOME` é ignorado.
+
+### Multi-conta concorrente DE VERDADE exige um Keychain por perfil
+Como a credencial é o Keychain de login (derivado de `$HOME`) e a chave é
+fixa, o único jeito de dois processos concorrentes terem tokens
+diferentes é **cada um com seu próprio `login.keychain-db`** — ou seja,
+`$HOME` falso por perfil com um keychain **real e próprio** (criado via
+`security create-keychain`), NÃO symlinkado pro compartilhado. Provado o
+mecanismo (keychain vazio → "sign in"; keychain populado → autentica),
+mas **não verificado ponta-a-ponta com 2 logins reais**.
+
+Layout que daria multi-conta concorrente (Tipo C, avançado/frágil):
+`Library/Keychains/` real por perfil + `.gemini/` real por perfil +
+symlinks de `.gitconfig`, `.ssh`, `Library/Caches` (Playwright fica em
+`Library/Caches/ms-playwright-go`). `~/.config/antigravity` é não-problema
+— neste build o agy nem usa.
+
+### Por que `ai-profile agy run` FUNCIONA mesmo assim hoje (fallback)
+No setup atual (`$HOME` falso, **sem** keychain nenhum na pasta), o
+keychain fica indisponível → o dialog aparece → ao cancelar, o `agy` cai
+no **fallback do arquivo de token** (`antigravity-oauth-token`, em texto
+puro) dentro do `$HOME` isolado. Foi por isso que o login apareceu como
+`[email redigido]` na sessão. Ou seja: **o keychain quebrado é,
+por acidente, o que faz o isolamento por arquivo funcionar** — cada perfil
+tem seu arquivo e não há keychain compartilhado pra sobrepor.
+
+Implicação prática boa: como cada `$HOME` falso tem seu próprio arquivo e
+nenhum keychain, **mesmo uso concorrente provavelmente já funciona hoje
+via fallback de arquivo** — com o dialog (cancelar) como único custo
+visível. Não verificado com 2 contas reais, e depende do caminho de
+fallback (que um update do agy pode mudar). O token fica em texto puro no
+arquivo (modo 0600, só dono lê).
+
+#### Detalhamento do fallback (como funciona passo a passo)
+
+Sequência observada com `ai-profile agy run <perfil>`:
+
+1. `with-env` aponta `$HOME` pra `~/.ai-profiles/agy-<id>/`. Essa pasta não
+   tem `Library/Keychains/`, então o macOS não acha um keychain padrão.
+2. **No login** (`agy` tentando GRAVAR o token no slot
+   `gemini`/`antigravity` do keychain): a gravação falha → aparece o dialog
+   "Chaves Não Encontradas". Você clica **Cancelar**.
+3. O `agy` então grava/lê o token no **arquivo**
+   `$HOME/.gemini/antigravity-cli/antigravity-oauth-token` (JSON em texto
+   puro: `{"token":{"access_token":"ya29...","refresh_token":...}}`).
+4. **Nas execuções seguintes**, o `agy` lê o token desse arquivo. Como já
+   está autenticado e não precisa gravar no keychain de novo, **o dialog
+   não reaparece** — ele é, na prática, **só no login** (confirmado pelo
+   uso real: a mensagem aparece apenas no login).
+
+#### Isolamento por perfil: por que funciona, e por que é frágil
+
+Cada perfil = um `$HOME` falso = um `~/.gemini/antigravity-cli/` próprio =
+um arquivo de token próprio. Não há keychain compartilhado pra sobrepor →
+cada perfil (inclusive vários ao mesmo tempo, cada processo com seu
+`$HOME`) usa seu próprio token. É isso que dá multi-conta concorrente
+**de graça** no estado atual.
+
+⚠️ **Ironia importante (não-óbvia):** o dialog/keychain-quebrado é
+**load-bearing** pro isolamento. Se a gente "consertasse" o dialog
+symlinkando `Library/Keychains` pro keychain real (a antiga Opção A), o
+`agy` voltaria a usar o **slot global único** do keychain → **todos os
+perfis passariam a compartilhar a mesma conta** e o isolamento
+**quebraria**. Ou seja: Opção A (tirar o dialog) e o isolamento por perfil
+são **conflitantes**. Pra ter multi-conta sem o keychain global atrapalhar,
+ou se mantém o keychain indisponível (estado atual, fallback de arquivo) ou
+se dá um keychain **próprio por perfil** (Tipo C). Não dá pra ter
+"keychain real compartilhado" + multi-conta.
+
+Resumo: o estado atual (sem keychain no `$HOME` falso → fallback de
+arquivo) é, surpreendentemente, o caminho **mais simples** que entrega
+multi-conta concorrente — o Tipo C (keychain por perfil) só seria
+necessário se um update do agy deixar de cair no fallback de arquivo.
+
+### Tradeoff de fundo (decisão do produto, não nossa)
+Pro agy, **"sentir nativo como claude/codex"** e **"multi-conta robusta"**
+são mutuamente exclusivos: nativo = usa o keychain global = 1 conta;
+multi-conta robusta = keychain por perfil = não-nativo + frágil +
+macOS-only. claude/codex não têm esse dilema porque foram feitos pra
+relocar a credencial inteira via env var mantendo `$HOME` real.
+
+**Decisão final: pendente.** Caminho atual recomendado = **B** (usar como
+está, via fallback de arquivo, cancelando o dialog), documentado aqui. O
+**Tipo C** (keychain por perfil) fica como opt-in futuro, só se multi-conta
+simultânea robusta virar requisito firme, e só depois de validar com 2
+logins reais.

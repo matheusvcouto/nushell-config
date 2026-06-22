@@ -12,6 +12,7 @@ ai-profile <tool> new <nome>
 ai-profile <tool> rename <nome-antigo> <nome-novo>
 ai-profile <tool> delete <nome>
 ai-profile <tool> run <nome> ...args
+ai-profile <tool> acp <nome> ...args   # lança o agente ACP isolado (só tools com ACP)
 ```
 
 `list` é o padrão se você omitir a ação (`ai-profile claude` == `ai-profile
@@ -25,7 +26,18 @@ ai-profile claude run mae
 ai-profile agy new mae
 ai-profile agy run mae --print "oi"
 ai-profile claude rename mae monica
+ai-profile claude acp monica           # servidor ACP do claude, perfil monica
+ai-profile codex acp work              # servidor ACP do codex, perfil work
 ```
+
+## ACP
+
+`ai-profile <tool> acp <nome>` lança o adapter ACP daquele tool com o
+mesmo isolamento por perfil, falando JSON-RPC por stdio (pra ser spawnado
+por um cliente ACP). Só funciona em tools que declaram o campo `acp` no
+`TOOLS` — hoje `claude` (via `claude-agent-acp`) e `codex` (via
+`codex-acp`). `agy` não tem ACP. Detalhes e o registry tool×profile no
+app cliente: `acp-integration.md`.
 
 Na primeira vez que você roda `ai-profile <tool> run <nome>`, a CLI não tem
 login ainda — faça o login normal dela dentro dessa sessão (ex: `/login`

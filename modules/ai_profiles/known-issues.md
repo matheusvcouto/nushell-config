@@ -24,12 +24,16 @@ Storage" no Keychain (padrão estilo Chrome), mas como o `$HOME` real é
 mantido, o keychain é acessível normalmente; e o token real está no
 arquivo, então o isolamento não depende dele.
 
-### agy — ⚠️ parcial (ver `agy-keychain-issue.md`)
-Isola via `$HOME` (não tem env var de config-dir). O token persiste em
-texto puro num arquivo dentro do perfil, então o isolamento da credencial
-funciona — mas sobrescrever `$HOME` quebra o acesso ao Keychain no macOS,
-gerando o dialog "Chaves Não Encontradas". Detalhes completos no arquivo
-dedicado.
+### agy — ⚠️ parcial (ver `agy-keychain-issue.md`, seção ATUALIZAÇÃO)
+Isola via `$HOME` (não tem env var de config-dir). **Correção importante:**
+a credencial real do agy é um item ÚNICO e GLOBAL do Keychain
+(`gemini`/`antigravity`), não o arquivo de token — o Keychain vence o
+arquivo na leitura. Hoje `ai-profile agy run` funciona mesmo assim porque,
+sem keychain no `$HOME` falso, o agy cai no **fallback do arquivo de
+token** (texto puro, por perfil) — então o isolamento acontece, com o
+dialog "Chaves Não Encontradas" como custo. Multi-conta robusta de verdade
+exigiria um Keychain por perfil (Tipo C, frágil, macOS-only). Detalhes e
+o tradeoff "nativo vs multi-conta" no arquivo dedicado.
 
 ## Outros riscos do desenho atual
 
