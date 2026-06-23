@@ -45,15 +45,10 @@ const TOOLS = [
         # SEPARADO `codex-acp`, que respeita CODEX_HOME.
         acp: { bin: "codex-acp", args: [] }
     }
-    {
-        name: "agy"
-        bin: "agy"
-        config_env: "HOME"
-        clear_env: ["ANTIGRAVITY_API_KEY"]
-        # sem campo acp → agy NÃO é oferecido como agente ACP.
-    }
 ]
 ```
+
+(`agy` não está em `TOOLS` — removido do módulo, ver `agy-keychain-issue.md`.)
 
 "Dizer que um tem e deve usar determinado ACP" = é exatamente o campo
 `acp`: a presença declara que tem; o `{bin, args}` declara qual comando é o

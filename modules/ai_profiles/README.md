@@ -2,7 +2,12 @@
 
 Contas isoladas (Pro pessoal vs. de um familiar, por exemplo) para CLIs de
 IA, sem conflito de sessão. Um único comando cobre qualquer CLI configurada
-em `TOOLS` dentro de `mod.nu` (hoje: `claude`, `codex`, `agy`).
+em `TOOLS` dentro de `mod.nu` (hoje: `claude`, `codex`).
+
+`agy` (Antigravity/Google) não é suportado por este módulo — a credencial
+dele vive num item global do Keychain, não por config dir, então isolar
+por `$HOME` não dá multi-conta de verdade e quebra o keychain padrão.
+Use o `agy` direto, sem perfil. Detalhes em `agy-keychain-issue.md`.
 
 ## Uso
 
@@ -23,8 +28,6 @@ claude list`).
 ```
 ai-profile claude new mae
 ai-profile claude run mae
-ai-profile agy new mae
-ai-profile agy run mae --print "oi"
 ai-profile claude rename mae monica
 ai-profile claude acp monica           # servidor ACP do claude, perfil monica
 ai-profile codex acp work              # servidor ACP do codex, perfil work
@@ -36,8 +39,8 @@ ai-profile codex acp work              # servidor ACP do codex, perfil work
 mesmo isolamento por perfil, falando JSON-RPC por stdio (pra ser spawnado
 por um cliente ACP). Só funciona em tools que declaram o campo `acp` no
 `TOOLS` — hoje `claude` (via `claude-agent-acp`) e `codex` (via
-`codex-acp`). `agy` não tem ACP. Detalhes e o registry tool×profile no
-app cliente: `acp-integration.md`.
+`codex-acp`). Detalhes e o registry tool×profile no app cliente:
+`acp-integration.md`.
 
 Na primeira vez que você roda `ai-profile <tool> run <nome>`, a CLI não tem
 login ainda — faça o login normal dela dentro dessa sessão (ex: `/login`

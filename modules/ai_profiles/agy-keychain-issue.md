@@ -1,5 +1,14 @@
 # Investigação: dialog de Keychain ao usar `ai-profile agy run`
 
+## STATUS: RESOLVIDO — `agy` removido do módulo
+
+Decisão final (2026-06-23): tirar o `agy` do array `TOOLS` em `mod.nu`
+(Opção C, descrita abaixo). O `agy` passou a ser usado direto (`agy ...`),
+sem isolamento por perfil — `$HOME` real, keychain de login real, conta
+única. Motivo: entre "multi-conta robusta" e "zero risco/zero hack de
+keychain", a segunda venceu. O restante deste arquivo é a investigação
+histórica que levou a essa decisão; mantido como registro.
+
 ## Sintoma
 
 Ao rodar `ai-profile run agy matheusestudos` (ordem antiga; hoje seria

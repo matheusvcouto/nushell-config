@@ -52,8 +52,8 @@ default.
 - **Encadeamento com o mise:** `codex` JÁ é um shim do mise — o nosso teria
   que vir antes e chamar o do mise (shim sobre shim), ordenação de PATH
   frágil.
-- **agy não muda:** o shim setaria `HOME` igual → mesmo fallback/dialog de
-  keychain de hoje (ver `agy-keychain-issue.md`).
+- **agy fora de escopo:** removido do `TOOLS` (ver `agy-keychain-issue.md`),
+  então um shim cobriria só `claude`/`codex`.
 - **Não ajuda no ACP via app .ts:** lá o app seta o env no spawn direto
   (ver `acp-integration.md`); shim é pra uso **interativo** no terminal.
 
@@ -107,13 +107,13 @@ Rust?"). Pré-requisito natural: índice em JSON (ideia 4).
 
 ---
 
-## 6. agy multi-conta robusta (Tipo C: keychain por perfil)
+## 6. agy multi-conta robusta (Tipo C: keychain por perfil) — DESCARTADA
 
-Opt-in futuro, só se o fallback de arquivo do agy deixar de funcionar (ver
-`agy-keychain-issue.md`). Cada perfil com seu próprio `login.keychain-db`.
-Mais complexo, macOS-only, exige validação com 2 logins reais. **Lembrete
-importante:** "consertar" o dialog do agy e ter multi-conta são
-conflitantes — ver a ironia "load-bearing" no `agy-keychain-issue.md`.
+Considerada e rejeitada em 2026-06-23: o `agy` foi removido do `TOOLS`
+em vez disso (zero risco de keychain > multi-conta). Ficaria assim só se
+multi-conta concorrente do `agy` virar requisito firme de novo. Detalhes
+do mecanismo (keychain próprio por perfil, macOS-only, exigiria validação
+com 2 logins reais) e a ironia "load-bearing" em `agy-keychain-issue.md`.
 
 ---
 

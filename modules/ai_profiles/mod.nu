@@ -70,21 +70,16 @@ const TOOLS = [
         # separado `codex-acp`, que respeita CODEX_HOME.
         acp: { bin: "codex-acp", args: [] }
     }
-    {
-        # "agy" é o binário da CLI do produto Antigravity (Google). Usamos
-        # o nome do binário, não do produto, porque é isso que você digita
-        # pra rodar a CLI sozinha.
-        name: "agy"
-        bin: "agy"
-        # agy não tem uma env var dedicada de config dir (usa $HOME
-        # diretamente). Sobrescrever HOME aqui só afeta o processo do agy
-        # rodado dentro do with-env, não o shell.
-        config_env: "HOME"
-        clear_env: ["ANTIGRAVITY_API_KEY"]
-        # sem campo `acp` → agy não é oferecido como agente ACP (não há
-        # adapter conhecido + ver dilema de credencial em agy-keychain-issue.md).
-    }
 ]
+# "agy" (Antigravity/Google) foi deliberadamente deixado fora deste array.
+# A única forma de isolá-lo é via $HOME (não tem env var de config-dir
+# própria), mas a credencial real do agy é um item ÚNICO e GLOBAL do
+# Keychain de login — não por config dir. Sobrescrever $HOME quebra o
+# keychain padrão (dialog "Chaves Não Encontradas" no macOS) e, pior, não
+# dá isolamento de verdade entre perfis (todos compartilhariam o mesmo
+# item de keychain se o dialog fosse "corrigido"). Decisão: usar o agy
+# direto, sem isolamento por perfil — uma conta só, sem hack de $HOME/
+# keychain. Ver `agy-keychain-issue.md` para o histórico completo.
 
 def tool-spec [
     tool: string

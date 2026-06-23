@@ -24,16 +24,15 @@ Storage" no Keychain (padrão estilo Chrome), mas como o `$HOME` real é
 mantido, o keychain é acessível normalmente; e o token real está no
 arquivo, então o isolamento não depende dele.
 
-### agy — ⚠️ parcial (ver `agy-keychain-issue.md`, seção ATUALIZAÇÃO)
-Isola via `$HOME` (não tem env var de config-dir). **Correção importante:**
-a credencial real do agy é um item ÚNICO e GLOBAL do Keychain
-(`gemini`/`antigravity`), não o arquivo de token — o Keychain vence o
-arquivo na leitura. Hoje `ai-profile agy run` funciona mesmo assim porque,
-sem keychain no `$HOME` falso, o agy cai no **fallback do arquivo de
-token** (texto puro, por perfil) — então o isolamento acontece, com o
-dialog "Chaves Não Encontradas" como custo. Multi-conta robusta de verdade
-exigiria um Keychain por perfil (Tipo C, frágil, macOS-only). Detalhes e
-o tradeoff "nativo vs multi-conta" no arquivo dedicado.
+### agy — ❌ removido do módulo (decisão final, ver `agy-keychain-issue.md`)
+A credencial real do agy é um item ÚNICO e GLOBAL do Keychain
+(`gemini`/`antigravity`), não por config dir. Isolar via `$HOME` (única
+opção, já que o agy não tem env var dedicada) quebrava o keychain padrão
+(dialog "Chaves Não Encontradas") e não dava isolamento de verdade — só
+funcionava por acidente, via fallback de arquivo de token em texto puro.
+Multi-conta robusta exigiria um Keychain por perfil (Tipo C, frágil,
+macOS-only, não implementado). Decisão: tirar o `agy` do `TOOLS` e usá-lo
+direto, sem perfil — prioriza zero risco de keychain sobre multi-conta.
 
 ## Outros riscos do desenho atual
 
@@ -60,13 +59,11 @@ Mitigações possíveis (não implementadas):
 - Um comando `ai-profile <tool> adopt <dir>` ou um "doctor" que varre
   `~/.ai-profiles/` e re-registra pastas órfãs no índice.
 
-### 2. `$HOME` override do agy quebra mais que o keychain — MÉDIO
-Sobrescrever `$HOME` faz o agy não enxergar nada que viva no home real:
-`~/.gitconfig`, `~/.ssh/`, rc do shell, etc. Como o agy é um agente de
-código que faz operações de git, isso pode causar efeitos colaterais
-(commits sem identidade configurada, falha em push via ssh, etc.) além do
-dialog de keychain já documentado. Também recria caches pesados por perfil
-(ex: `Library/Caches/ms-playwright-go`), desperdiçando disco.
+### 2. `$HOME` override do agy quebra mais que o keychain — RESOLVIDO
+Era o risco do agy isolado via `$HOME` falso: não enxergar `~/.gitconfig`,
+`~/.ssh/`, rc do shell, caches duplicados (`ms-playwright-go`), etc. Não
+se aplica mais — o `agy` foi removido do `TOOLS` (ver seção acima e
+`agy-keychain-issue.md`). Mantido aqui só como histórico.
 
 ### 3. Sem proteção de concorrência no `index.nuon` — BAIXO
 `create`/`rename`/`delete` fazem read-modify-write do índice sem lock. Dois
