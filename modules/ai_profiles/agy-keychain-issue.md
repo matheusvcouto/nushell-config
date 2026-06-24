@@ -186,8 +186,8 @@ symlinks de `.gitconfig`, `.ssh`, `Library/Caches` (Playwright fica em
 No setup atual (`$HOME` falso, **sem** keychain nenhum na pasta), o
 keychain fica indisponível → o dialog aparece → ao cancelar, o `agy` cai
 no **fallback do arquivo de token** (`antigravity-oauth-token`, em texto
-puro) dentro do `$HOME` isolado. Foi por isso que o login apareceu como
-`[email redigido]` na sessão. Ou seja: **o keychain quebrado é,
+puro) dentro do `$HOME` isolado. Foi por isso que o login apareceu como a
+conta certa (e-mail redigido) na sessão. Ou seja: **o keychain quebrado é,
 por acidente, o que faz o isolamento por arquivo funcionar** — cada perfil
 tem seu arquivo e não há keychain compartilhado pra sobrepor.
 

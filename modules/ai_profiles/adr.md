@@ -210,6 +210,37 @@ por perfil (ex: uma mais simples num perfil, mais detalhada em outro) —
 basta adicionar um `.json` novo em `statusline-templates/` e passar o nome
 como segundo argumento.
 
+## Decisão (revisão 8): bug do nome de conta na statusLine com perfis isolados
+
+**Sintoma**: ao rodar `ai-profile claude run monica`, a status bar do Claude
+Code (script fora deste repo, em `~/.claude/statusline-command.sh`) mostrava
+o nome da conta principal (`Matheus`) em vez do nome da conta isolada
+(`Mônica`), mesmo a sessão estando autenticada corretamente como Mônica.
+
+**Causa raiz (confirmada empiricamente)**: o script lia o nome direto de
+`$HOME/.claude.json` (hardcoded), ignorando que o `run-tool-profile` (acima)
+isola via `with-env { CLAUDE_CONFIG_DIR: $dir }`. O processo `claude` da
+sessão isolada — e a statusLine, como processo filho dele — herda
+`CLAUDE_CONFIG_DIR` no ambiente, mas o script não usava essa variável.
+Confirmado inspecionando os dois arquivos: `~/.claude.json` tem
+`oauthAccount.displayName = "Matheus"`; o `.claude.json` dentro da pasta do
+perfil monica (`~/.ai-profiles/claude-...-hilw/.claude.json`) tem
+`oauthAccount.displayName = "Mônica"` (conta secundária da família).
+
+**Não é um problema de autenticação/isolamento real** — o `claude` em si
+sempre leu o config dir e o Keychain certos (isolamento por
+`CLAUDE_CONFIG_DIR` + hash do path, ver seção "Isolamento funciona?" em
+`known-issues.md`). O bug era puramente cosmético, isolado a um script
+separado fora deste módulo.
+
+**Correção**: trocar `"$HOME/.claude.json"` por
+`"${CLAUDE_CONFIG_DIR:-$HOME}/.claude.json"` no script da statusLine — usa
+o config dir do perfil ativo quando setado, cai no `$HOME` normal quando
+não (conta principal). Testado nos três casos (conta principal, perfil
+monica, `CLAUDE_CONFIG_DIR` apontando pra pasta inexistente — falha
+graciosa, segmento só desaparece, sem erro). Não afeta nenhuma credencial
+nem o Keychain: o campo lido é só texto decorativo dentro do `.claude.json`.
+
 ## Alternativas consideradas
 
 - **Diretório nomeado igual ao alias original** (revisão 1, descrita

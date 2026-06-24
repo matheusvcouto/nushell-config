@@ -21,6 +21,13 @@ se repita:
    `xox*`, JWTs `eyJ...`), `access_token`/`refresh_token`/`id_token`/
    `client_secret`/`password` com VALOR, chaves privadas
    (`BEGIN ... PRIVATE KEY`), conteúdo de `.env`, cookies, sessões.
+1b. **Nunca** escreva endereços de e-mail reais (seus, de familiares, de
+   contas de terceiros) em nenhum arquivo do repo — nem em docs (`adr.md`,
+   `known-issues.md`, etc.), nem em exemplo, nem em log/output colado.
+   Mesmo não sendo "segredo" tecnicamente, é PII em repositório público.
+   Ao documentar uma investigação que envolveu uma conta de e-mail, use
+   placeholder (`<email redigido>`, `usuario@exemplo.com`) ou descreva sem
+   citar o valor (ex: "a conta secundária da família").
 2. Ao documentar formato de credencial, use **sempre placeholders**
    (`<REDIGIDO>`, `ya29.<...>`, `sk-...`) — nunca cole a saída real de um
    arquivo de token, keychain, `auth.json`, `oauth_creds.json`,
@@ -36,6 +43,13 @@ se repita:
    var, não prosa, não placeholder `<...>`) → **parar e redigir antes de
    commitar**. (Validado: pega `"access_token":"ya29.real..."`, ignora
    `ANTHROPIC_API_KEY`, `ya29.<REDIGIDO>` e a palavra em prosa.)
+
+   Rodar também esta varredura pra e-mails reais (regra 1b):
+   ```
+   git diff --cached | rg -n '[A-Za-z0-9._%+-]+@(gmail|outlook|hotmail|yahoo|icloud|protonmail)\.com|[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}' | rg -v 'noreply@anthropic\.com|users\.noreply\.github\.com|exemplo\.com|example\.com|<.*redigid|<EMAIL>'
+   ```
+   Saída vazia = ok. Qualquer e-mail real que aparecer → redigir antes de
+   commitar.
 4. **Nunca commitar arquivos sensíveis**: `.env`, `.env.*` (exceto
    `.env.example` só com comentários/placeholders), `*.pem`, `*.key`,
    `id_rsa`, `id_ed25519`, `*.p12`, `auth.json`, `credentials*.json`,
