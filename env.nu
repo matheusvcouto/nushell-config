@@ -39,8 +39,16 @@ $env.PGT_LOG_PATH = $"($env.HOME)/.cache/postgrestools-pg-log"
 
 # Path Management (Modular and Clean)
 # Equivalent to fish_add_path: adds paths, keeps them unique, and ensures they exist.
+# Homebrew vai primeiro: quando o nu é lançado direto por um app GUI (ex: plugin
+# de terminal do Obsidian), o PATH herdado é o mínimo do launchd (/etc/paths),
+# sem /opt/homebrew/*. Sem isso, qualquer hook que dependa de bin do brew
+# (zoxide, mise, etc.) falha só nesse cenário.
 $env.PATH = (
     $env.PATH
+    | prepend [
+        "/opt/homebrew/bin"
+        "/opt/homebrew/sbin"
+    ]
     | prepend $"($env.HOME)/.local/share/mise/shims"
     | append [
         $"($env.ANDROID_HOME)/emulator"
