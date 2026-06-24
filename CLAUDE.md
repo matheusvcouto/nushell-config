@@ -10,10 +10,7 @@ Config do nushell (dotfiles). **Repositório PÚBLICO** em
 github.com/matheusvcouto/nushell-config — tudo que entra aqui é visível pra
 qualquer pessoa.
 
-## Segurança: NUNCA commitar credenciais (regra inegociável)
-
-Já houve um vazamento (fragmento de OAuth token num doc). Para impedir que
-se repita:
+## Segurança: NUNCA commitar credenciais nem PII (regra inegociável)
 
 1. **Nunca** escreva valores de segredo em arquivo nenhum do repo — nem em
    código, nem em `.md`, nem em exemplo. Isso inclui: tokens (`ya29.`,
@@ -21,13 +18,21 @@ se repita:
    `xox*`, JWTs `eyJ...`), `access_token`/`refresh_token`/`id_token`/
    `client_secret`/`password` com VALOR, chaves privadas
    (`BEGIN ... PRIVATE KEY`), conteúdo de `.env`, cookies, sessões.
-1b. **Nunca** escreva endereços de e-mail reais (seus, de familiares, de
-   contas de terceiros) em nenhum arquivo do repo — nem em docs (`adr.md`,
-   `known-issues.md`, etc.), nem em exemplo, nem em log/output colado.
-   Mesmo não sendo "segredo" tecnicamente, é PII em repositório público.
-   Ao documentar uma investigação que envolveu uma conta de e-mail, use
-   placeholder (`<email redigido>`, `usuario@exemplo.com`) ou descreva sem
-   citar o valor (ex: "a conta secundária da família").
+1b. **Nunca** escreva PII real em arquivo nenhum do repo — código, `.md`,
+   exemplo, log/output colado. PII = qualquer dado que identifique uma
+   pessoa, conta ou máquina específica e não é só você quem decide o que
+   conta: e-mail, nome completo associado a uma conta, telefone, endereço
+   físico, UUID de conta/organização/máquina (`accountUuid`,
+   `organizationUuid`, `machineID`), IP real (use `192.0.2.x`/`203.0.113.x`
+   se precisar de exemplo), hostname/caminho que exponha mais do que o
+   exemplo precisa. Não é "segredo" tecnicamente, mas é dado público sobre
+   alguém num repo público.
+
+   Antes de colar qualquer saída real (JSON de config, log, resultado de
+   comando) num doc: se um valor específico não for necessário pro leitor
+   entender a decisão técnica, **redija antes de colar**. Use placeholder
+   (`<redigido>`, `usuario@exemplo.com`, `<uuid-redigido>`) ou descreva sem
+   o valor (ex: "a conta secundária da família").
 2. Ao documentar formato de credencial, use **sempre placeholders**
    (`<REDIGIDO>`, `ya29.<...>`, `sk-...`) — nunca cole a saída real de um
    arquivo de token, keychain, `auth.json`, `oauth_creds.json`,
@@ -49,7 +54,8 @@ se repita:
    git diff --cached | rg -n '[A-Za-z0-9._%+-]+@(gmail|outlook|hotmail|yahoo|icloud|protonmail)\.com|[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}' | rg -v 'noreply@anthropic\.com|users\.noreply\.github\.com|exemplo\.com|example\.com|<.*redigid|<EMAIL>'
    ```
    Saída vazia = ok. Qualquer e-mail real que aparecer → redigir antes de
-   commitar.
+   commitar. Só e-mail tem regex confiável; os outros tipos de PII da
+   regra 1b (nome, telefone, UUID, endereço) exigem revisão manual.
 4. **Nunca commitar arquivos sensíveis**: `.env`, `.env.*` (exceto
    `.env.example` só com comentários/placeholders), `*.pem`, `*.key`,
    `id_rsa`, `id_ed25519`, `*.p12`, `auth.json`, `credentials*.json`,
