@@ -18,6 +18,7 @@ ai-profile <tool> rename <nome-antigo> <nome-novo>
 ai-profile <tool> delete <nome>
 ai-profile <tool> run <nome> ...args
 ai-profile <tool> acp <nome> ...args   # lança o agente ACP isolado (só tools com ACP)
+ai-profile <tool> apply-statusline <nome> [template]   # ver seção "statusLine" abaixo
 ```
 
 `list` é o padrão se você omitir a ação (`ai-profile claude` == `ai-profile
@@ -45,6 +46,28 @@ por um cliente ACP). Só funciona em tools que declaram o campo `acp` no
 Na primeira vez que você roda `ai-profile <tool> run <nome>`, a CLI não tem
 login ainda — faça o login normal dela dentro dessa sessão (ex: `/login`
 no Claude) escolhendo a conta certa. Fica salvo isolado daquele perfil.
+
+## statusLine
+
+Cada perfil tem seu próprio `settings.json` isolado (é o que `CLAUDE_CONFIG_DIR`/
+`CODEX_HOME` aponta pra ele). Por isso a chave `statusLine` do seu
+`settings.json` global (`~/.claude/settings.json`) **não** aparece quando
+você roda `ai-profile claude run <nome>` — o perfil nunca lê o global.
+
+`apply-statusline` resolve isso sem quebrar o isolamento: mescla só a chave
+`statusLine` (lida de um template em `statusline-templates/<nome>.json`,
+dentro deste módulo) no `settings.json` do perfil, mantendo todo o resto
+(`model`, `enabledPlugins`, `theme`...) intocado. É manual e opt-in — nunca
+roda em `new`/`run`/`acp`, só quando você chama:
+
+```
+ai-profile claude apply-statusline monica            # usa statusline-templates/default.json
+ai-profile claude apply-statusline trabalho detalhado # usa statusline-templates/detalhado.json
+```
+
+Templates diferentes permitem statuslines diferentes por perfil — crie um
+`.json` novo em `statusline-templates/` (mesmo formato da chave `statusLine`
+do `settings.json`) e use o nome do arquivo (sem `.json`) como argumento.
 
 ## O que não fazer
 

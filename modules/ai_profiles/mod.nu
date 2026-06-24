@@ -31,6 +31,11 @@ const PROFILE_NAME_PATTERN = '^[A-Za-z0-9_-]+$'
 const PROFILES_ROOT = "~/.ai-profiles"
 const PROFILES_FILE = "~/.ai-profiles/index.nuon"
 
+# Pasta de templates de statusLine (ver "apply-statusline" mais abaixo).
+# Resolvida a partir do próprio mod.nu (path self), não da pasta onde o nu
+# foi iniciado — assim o comando funciona de qualquer lugar.
+const STATUSLINE_TEMPLATES_DIR = (path self | path dirname | path join "statusline-templates")
+
 # Cada entrada:
 #   - name: valor que você digita como <tool> (ex: "claude")
 #   - bin: binário a executar
@@ -99,7 +104,15 @@ def nu-complete-tools [] {
 }
 
 def nu-complete-actions [] {
-    ["list" "new" "rename" "delete" "run" "acp"]
+    ["list" "new" "rename" "delete" "run" "acp" "apply-statusline"]
+}
+
+def nu-complete-statusline-templates [] {
+    ls $STATUSLINE_TEMPLATES_DIR
+    | get name
+    | path parse
+    | where extension == "json"
+    | get stem
 }
 
 # Completer usado pra qualquer argumento que represente um nome de perfil
@@ -352,6 +365,54 @@ def acp-tool-profile [
     }
 }
 
+# Cada perfil tem seu próprio settings.json (porque CLAUDE_CONFIG_DIR /
+# CODEX_HOME apontam pra ele) — é assim que o isolamento funciona, mas
+# significa que chaves do settings.json global (ex: statusLine) NUNCA
+# chegam a um perfil sozinhas. "apply-statusline" resolve isso sem quebrar
+# o isolamento: mescla só a chave "statusLine" (lida de um template em
+# statusline-templates/<nome>.json) no settings.json do perfil, mantendo
+# todo o resto (model, plugins, theme...) intocado. É manual e opt-in —
+# nada disso roda em "new"/"run"/"acp".
+#
+# Templates diferentes (statusline-templates/<nome>.json) permitem ter
+# statuslines diferentes por perfil (ex: um mais simples pra um perfil de
+# família, um mais detalhado pra um perfil de trabalho).
+def statusline-template-path [
+    template: string
+] {
+    let path = ($STATUSLINE_TEMPLATES_DIR | path join $"($template).json")
+    if not ($path | path exists) {
+        let names = (nu-complete-statusline-templates | str join ', ')
+        error make {
+            msg: $"Template de statusLine inexistente: ($template). Disponíveis: ($names)"
+        }
+    }
+    $path
+}
+
+def apply-statusline-to-profile [
+    tool: string
+    profile: string
+    template: string
+] {
+    tool-spec $tool | ignore
+    let dir = (existing-profile-dir $tool $profile)
+    let statusline = (open (statusline-template-path $template))
+
+    let settings_path = ($dir | path join "settings.json")
+    let settings = if ($settings_path | path exists) {
+        open $settings_path
+    } else {
+        {}
+    }
+
+    $settings
+    | upsert statusLine $statusline
+    | save --force $settings_path
+
+    print $"statusLine \(($template)) aplicada em ($tool)/($profile)"
+}
+
 # --wrapped é necessário pro "run" poder repassar flags soltas (ex: --print
 # "oi") direto pra CLI de verdade, sem o Nushell tentar interpretá-las como
 # flags do próprio ai-profile. tool/action continuam posicionais tipados com
@@ -402,9 +463,17 @@ export def --wrapped "ai-profile" [
             }
             acp-tool-profile $tool $profile ($rest | skip 1)
         }
+        "apply-statusline" => {
+            let profile = ($rest | get --optional 0)
+            let template = ($rest | get --optional 1 | default "default")
+            if $profile == null {
+                error make { msg: "uso: ai-profile <tool> apply-statusline <perfil> [template]" }
+            }
+            apply-statusline-to-profile $tool $profile $template
+        }
         _ => {
             error make {
-                msg: $"Ação desconhecida: ($action). Use list, new, rename, delete, run ou acp."
+                msg: $"Ação desconhecida: ($action). Use list, new, rename, delete, run, acp ou apply-statusline."
             }
         }
     }

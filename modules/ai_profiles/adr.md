@@ -175,6 +175,41 @@ list/new/rename/delete), usando `$rest | get 0` como nome do perfil e
 `$rest | skip 1` como args da CLI. Removido o comando separado
 `"ai-profile run"`.
 
+## Decisão (revisão 7): `apply-statusline` pra propagar a statusLine aos perfis isolados
+
+**Problema**: `CLAUDE_CONFIG_DIR`/`CODEX_HOME` apontam cada perfil pro seu
+próprio `settings.json`, isolado do `~/.claude/settings.json` global por
+design (é o que garante que `model`/`enabledPlugins`/`theme` de um perfil
+não vazam pra outro). Efeito colateral notado pelo usuário: a chave
+`statusLine` do `settings.json` global também não chega aos perfis — rodar
+`ai-profile claude run monica` não mostrava a status bar, porque o
+`settings.json` daquele perfil simplesmente não tinha a chave.
+
+**Alternativas consideradas**:
+- *Symlink do `settings.json` do perfil pro global*: descartada — reabriria
+  o problema que o isolamento existe pra evitar (mudar config num perfil
+  afetaria todos).
+- *Escrever `statusLine` automaticamente em `create-profile`*: descartada a
+  pedido do usuário — ele queria controle manual, por perfil, não algo que
+  todo perfil novo já vem com de cara.
+- *Copiar/mesclar o JSON na mão*: simples, mas arriscado (mesclar errado
+  apaga outras chaves do `settings.json` do perfil) e repetitivo.
+
+**Decisão**: novo comando `ai-profile <tool> apply-statusline <perfil>
+[template]`. Lê um template em `statusline-templates/<template>.json`
+(`default` se omitido) — um arquivo contendo só o valor da chave
+`statusLine` — e faz `upsert statusLine` no `settings.json` do perfil,
+preservando todas as outras chaves. Roda só quando chamado explicitamente;
+nunca em `new`/`run`/`acp`. Pasta de templates resolvida via `path self`
+(const, parse-time) a partir do próprio `mod.nu`, não do diretório onde o
+`nu` foi iniciado.
+
+Motivo de usar **template em arquivo** em vez de hardcodar a `statusLine`
+global dentro do comando: o usuário quer poder ter statuslines diferentes
+por perfil (ex: uma mais simples num perfil, mais detalhada em outro) —
+basta adicionar um `.json` novo em `statusline-templates/` e passar o nome
+como segundo argumento.
+
 ## Alternativas consideradas
 
 - **Diretório nomeado igual ao alias original** (revisão 1, descrita
