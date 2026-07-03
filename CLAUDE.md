@@ -70,6 +70,28 @@ qualquer pessoa.
    (`git filter-repo` + force-push) — decisão do usuário. Recomendar
    rotacionar/revogar o segredo de qualquer forma.
 
+## Testes e verificação: nunca mexer no estado real do usuário
+
+> Motivo: durante a implementação do `require-runtime`, um agente rodou
+> `ai-profile claude new test-verify-tmp` "só para verificar" e isso criou
+> uma entrada de verdade em `~/.ai-profiles/index.nuon` (fora do repo) mais
+> uma pasta real — sujeira que o usuário teve que limpar manualmente porque
+> `delete` exige confirmação interativa. Não pode se repetir.
+
+1. Ao verificar/testar mudanças neste repo (perfis de AI, clipboard,
+   configs, qualquer coisa que grave fora do diretório do repo), **nunca**
+   rode um comando que crie, apague ou altere estado real do usuário —
+   mesmo que pareça um teste inofensivo, mesmo que dê pra "limpar depois".
+2. Se não der pra testar de um jeito genuinamente isolado e trivialmente
+   reversível sem intervenção manual do usuário, **não teste esse caminho**.
+   É melhor pular a verificação — e deixar isso explícito pro usuário — do
+   que criar um artefato "isolado" que mesmo assim pode dar problema.
+3. Testes seguros preferidos, nessa ordem de preferência: leitura pura
+   (`which`, `describe`, `check-runtime`/`runtime-ok` sem side effect),
+   `with-env { PATH: [] }` pra simular dependência ausente, `nu
+   --no-config-file` carregando só o módulo isolado. Nenhum desses grava
+   nada fora do processo do próprio comando de teste.
+
 ## Commits e push
 
 - Commitar ou pushar **só quando o usuário pedir**.

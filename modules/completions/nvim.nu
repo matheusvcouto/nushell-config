@@ -1,5 +1,7 @@
 # modules/completions/nvim.nu
 
+use ../platform [runtime-ok]
+
 def normalize-path [path: string] {
     $path | str replace --all "\\" "/"
 }
@@ -47,6 +49,10 @@ def should-keep [relative: string] {
 }
 
 def git-files [] {
+    if not (runtime-ok { name: "nvim git completions", support: { default: "supported" }, requires: [{ kind: "command", name: "git" }] }) {
+        return []
+    }
+
     let check = (^git rev-parse --is-inside-work-tree | complete)
     if $check.exit_code != 0 {
         return []

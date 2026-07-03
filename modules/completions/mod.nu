@@ -4,6 +4,7 @@ use ./bun.nu  [bun_completer]
 use ./deno.nu [deno_completer]
 use ./mise.nu [mise_completer]
 use ./nvim.nu [nvim_completer]
+use ../platform [runtime-ok]
 
 # Registo de completers modulares
 export def external_completer [spans: list<string>] {
@@ -40,7 +41,9 @@ export def external_completer [spans: list<string>] {
     # Se encontrou, retorna. Se não, fallback para carapace w/ leniency
     if $result != null {
         $result
-    } else {
+    } else if (runtime-ok { name: "carapace completions", support: { default: "supported" }, requires: [{ kind: "command", name: "carapace" }] }) {
         CARAPACE_LENIENT=1 carapace $real_cmd nushell ...$spans | from json
+    } else {
+        []
     }
 }

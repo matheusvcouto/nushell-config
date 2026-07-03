@@ -10,17 +10,23 @@
 **Objetivo:** fazer o config abrir sem erro no Linux e no Windows, sem mudar
 o fluxo que já funciona no macOS — corrigindo só os pontos frágeis.
 
-**Arquitetura:** um módulo central minúsculo (`modules/platform`) só para o
-que é reutilizado (checar binário no PATH) ou não-trivial (clipboard por OS).
-Tudo que é uso único (paths de Android, Homebrew, geração de `zoxide.nu`/
-`mise.nu`) fica inline em `env.nu`. O resto são correções cirúrgicas em
-arquivos existentes.
+**Arquitetura:** um módulo central (`modules/platform`) para runtime/plataforma:
+checagem de binário no PATH, guards declarativos (`check-runtime`,
+`runtime-ok`, `require-runtime`) e clipboard por OS. Tudo que é uso único
+(paths de Android, Homebrew, geração de `zoxide.nu`/`mise.nu`) fica inline em
+`env.nu`. O resto são correções cirúrgicas em arquivos existentes.
 
 **Modo de falha escolhido:** o shell **abre normalmente** em qualquer OS.
 Features que dependem de binário externo ausente falham com **erro claro só
 quando chamadas** (nunca no startup). `source` de arquivos gerados nunca
 quebra porque `env.nu` sempre garante o arquivo (stub vazio se o binário não
 existir).
+
+**Regra para guards:** nunca chamar `require-runtime` no topo de `config.nu`,
+`env.nu` ou de um módulo importado no startup. Use `require-runtime` no início
+da função que executa a feature; use `runtime-ok` quando a feature puder cair
+para fallback silencioso (ex: completions). `check-runtime` é para diagnóstico
+e testes, porque retorna `{ok, failures}` sem jogar erro.
 
 ## Constraints globais (valem para todas as tasks)
 
@@ -151,9 +157,13 @@ original divergia da realidade, está anotado.
 
 **Interfaces produzidas** (usadas por tasks 4 e 5):
 - `command-exists [name: string] -> bool`
-- `require-command [name: string, hint?: string]` — erra se ausente
-- `clip-copy []` — lê stdin, copia pro clipboard do OS
-- `clip-paste []` — imprime o clipboard do OS
+- `missing-commands [names: list<string>] -> list<string>`
+- `check-runtime [spec: record] -> record`
+- `runtime-ok [spec: record] -> bool`
+- `require-runtime [spec: record]` — erra se OS/dependências não satisfazem a política
+- `require-command [name: string, hint?: string]`
+- `clip-copy []`
+- `clip-paste []`
 
 - [ ] **Passo 1: Criar `modules/platform/mod.nu` com este conteúdo exato**
 
@@ -349,8 +359,22 @@ $env.PGT_LOG_PATH = ([$home ".cache" "postgrestools-pg-log"] | path join)
 
 # Path Management (Modular and Clean)
 # Adiciona paths, mantém únicos, e garante que existam (where path exists).
-mut paths = (
-    $env.PATH
+mut paths = $env.PATH
+
+# Homebrew só no macOS: quando o nu é lançado direto por um app GUI (ex:
+# plugin de terminal do Obsidian), o PATH herdado é o mínimo do launchd
+# (/etc/paths), sem /opt/homebrew/*. Sem isso, qualquer hook que dependa de
+# bin do brew (zoxide, mise, etc.) falha só nesse cenário.
+# IMPORTANTE: este prepend roda ANTES do prepend do mise abaixo, de propósito
+# — preserva a ordem de precedência atual (mise > Homebrew) quando os dois
+# instalam o mesmo binário (ex: node/npm/npx via mise E via brew). Se
+# invertesse, o Homebrew passaria a vencer o mise silenciosamente no macOS.
+if $os == "macos" {
+    $paths = ($paths | prepend ["/opt/homebrew/bin" "/opt/homebrew/sbin"])
+}
+
+$paths = (
+    $paths
     | prepend ([$home ".local" "share" "mise" "shims"] | path join)
     | append [
         ($env.ANDROID_HOME | path join "emulator")
@@ -359,14 +383,6 @@ mut paths = (
         ($env.BUN_INSTALL | path join "bin")
     ]
 )
-
-# Homebrew só no macOS: quando o nu é lançado direto por um app GUI (ex:
-# plugin de terminal do Obsidian), o PATH herdado é o mínimo do launchd
-# (/etc/paths), sem /opt/homebrew/*. Sem isso, qualquer hook que dependa de
-# bin do brew (zoxide, mise, etc.) falha só nesse cenário.
-if $os == "macos" {
-    $paths = ($paths | prepend ["/opt/homebrew/bin" "/opt/homebrew/sbin"])
-}
 
 $env.PATH = ($paths | uniq | where {|p| $p | path exists})
 ```
@@ -413,6 +429,19 @@ nu --env-config env.nu --no-std-lib -c '[($nu.default-config-dir | path join "zo
 ```
 Esperado: `[true, true]` (macOS atual: gerados de verdade). Sem erro no
 carregamento do `env.nu`.
+
+- [ ] **Passo 4b: (macOS, se tiver binário instalado por mise E por Homebrew)
+  Verificar que o mise continua ganhando no PATH**
+
+Rodar (troca `node` por qualquer binário que você saiba que está em
+`~/.local/share/mise/shims` E em `/opt/homebrew/bin` — ex: `node`, `npm`,
+`npx`):
+```
+nu --env-config env.nu --no-std-lib -c 'which node | get 0.path'
+```
+Esperado: caminho dentro de `.local/share/mise/shims/node` (**não**
+`/opt/homebrew/bin/node`). Se vier do Homebrew, a ordem do PATH inverteu e
+precisa ser corrigida antes de seguir.
 
 - [ ] **Passo 5: Commit**
 

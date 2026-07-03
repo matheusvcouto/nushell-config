@@ -25,6 +25,7 @@
 # tocar a pasta — e como o ID nunca aparece em mais nenhum lugar, um
 # `ls ~/.ai-profiles` não fica com nomes "errados" depois de um rename.
 
+use ../platform [require-runtime]
 use ../utils [safe-remove]
 
 const PROFILE_NAME_PATTERN = '^[A-Za-z0-9_-]+$'
@@ -65,6 +66,20 @@ const TOOLS = [
         # adapter externo @agentclientprotocol/claude-agent-acp, embrulha o
         # claude code → respeita CLAUDE_CONFIG_DIR, então isola por perfil.
         acp: { bin: "claude-agent-acp", args: [] }
+        support: {
+            run: {
+                macos: { status: "supported", requires: [{ kind: "command", name: "claude" }] }
+                linux: { status: "untested", reason: "isolamento de credenciais ainda não validado no Linux" }
+                windows: { status: "untested", reason: "isolamento de credenciais ainda não validado no Windows" }
+                default: { status: "unsupported", reason: "sistema não reconhecido pelo config" }
+            }
+            acp: {
+                macos: { status: "supported", requires: [{ kind: "command", name: "claude-agent-acp" }] }
+                linux: { status: "untested", reason: "stdio/exec do ACP ainda não validado no Linux" }
+                windows: { status: "untested", reason: "stdio/exec do ACP ainda não validado no Windows" }
+                default: { status: "unsupported", reason: "sistema não reconhecido pelo config" }
+            }
+        }
     }
     {
         name: "codex"
@@ -74,6 +89,20 @@ const TOOLS = [
         # codex NÃO tem subcomando `codex acp` — o ACP é um binário
         # separado `codex-acp`, que respeita CODEX_HOME.
         acp: { bin: "codex-acp", args: [] }
+        support: {
+            run: {
+                macos: { status: "supported", requires: [{ kind: "command", name: "codex" }] }
+                linux: { status: "untested", reason: "isolamento de credenciais ainda não validado no Linux" }
+                windows: { status: "untested", reason: "isolamento de credenciais ainda não validado no Windows" }
+                default: { status: "unsupported", reason: "sistema não reconhecido pelo config" }
+            }
+            acp: {
+                macos: { status: "supported", requires: [{ kind: "command", name: "codex-acp" }] }
+                linux: { status: "untested", reason: "stdio/exec do ACP ainda não validado no Linux" }
+                windows: { status: "untested", reason: "stdio/exec do ACP ainda não validado no Windows" }
+                default: { status: "unsupported", reason: "sistema não reconhecido pelo config" }
+            }
+        }
     }
 ]
 # "agy" (Antigravity/Google) foi deliberadamente deixado fora deste array.
@@ -317,6 +346,14 @@ def run-tool-profile [
     args: list<string>
 ] {
     let spec = (tool-spec $tool)
+    require-runtime {
+        name: $"ai-profile ($tool) run"
+        support: ($spec.support?.run? | default {
+            default: "unsupported"
+            reason: $"TOOLS não define support.run para ($tool)"
+        })
+    }
+
     let dir = (existing-profile-dir $tool $profile)
 
     let overrides = (
@@ -348,6 +385,14 @@ def acp-tool-profile [
             msg: $"($tool) não tem ACP configurado — falta o campo acp em TOOLS"
         }
     }
+    require-runtime {
+        name: $"ai-profile ($tool) acp"
+        support: ($spec.support?.acp? | default {
+            default: "unsupported"
+            reason: $"TOOLS não define support.acp para ($tool)"
+        })
+    }
+
     let dir = (existing-profile-dir $tool $profile)
 
     let overrides = (

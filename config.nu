@@ -22,20 +22,9 @@ source ($nu.default-config-dir | path join "mise.nu")
 
 # experimental
 
-# Define comandos inteligentes baseados no OS
-let clipboard_command = (
-    if ($nu.os-info.name == "windows") { 
-        { copy: "clip.exe", paste: "powershell -command Get-Clipboard" }
-    } else if ($nu.os-info.name == "macos") { 
-        { copy: "pbcopy", paste: "pbpaste" }
-    } else { 
-        { copy: "xclip -sel clip", paste: "xclip -sel clip -o" }
-    }
-)
-
-# Cria os aliases usando a definição acima
-alias copy = ^$clipboard_command.copy
-alias paste = ^$clipboard_command.paste
+use modules/platform [clip-copy clip-paste]
+alias copy = clip-copy
+alias paste = clip-paste
 
 def --env vim-toggle [] {
   if $env.config.edit_mode == 'vi' {

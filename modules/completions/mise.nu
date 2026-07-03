@@ -1,5 +1,7 @@
 # modules/completions/mise.nu
 
+use ../platform [runtime-ok]
+
 def parse_mise_commands [] {
     ^mise --help
     | lines
@@ -29,6 +31,10 @@ export def mise_completer [spans: list<string>] {
     })
 
     if $real_cmd != "mise" {
+        return null
+    }
+
+    if not (runtime-ok { name: "mise completions", support: { default: "supported" }, requires: [{ kind: "command", name: "mise" }] }) {
         return null
     }
 
