@@ -92,6 +92,17 @@ qualquer pessoa.
    --no-config-file` carregando só o módulo isolado. Nenhum desses grava
    nada fora do processo do próprio comando de teste.
 
+## Pendências (`tasks.md`)
+
+- Este repo mantém um checklist vivo em `tasks.md` (raiz). **Sempre que
+  houver itens não marcados nele**, mencione as pendências relevantes ao
+  usuário no início da conversa ou antes de considerar um trabalho
+  relacionado "pronto" — não deixar pendência silenciosa.
+- Ao concluir um item de `tasks.md`, marcar `[x]` (ou remover, se fizer
+  mais sentido) no mesmo commit que fecha o trabalho.
+- Ao planejar trabalho novo que gere pendências (tasks de um plano em
+  `docs/plans/`, etc.), registrar em `tasks.md`, não só na conversa.
+
 ## Commits e push
 
 - Commitar ou pushar **só quando o usuário pedir**.

@@ -241,6 +241,99 @@ monica, `CLAUDE_CONFIG_DIR` apontando pra pasta inexistente — falha
 graciosa, segmento só desaparece, sem erro). Não afeta nenhuma credencial
 nem o Keychain: o campo lido é só texto decorativo dentro do `.claude.json`.
 
+## Decisão (revisão 9): rate-limit da statusLine — "recência-por-sessão" no lugar de "maior % vence"
+
+**Contexto**: o mesmo script (`~/.claude/statusline-command.sh`) mantém um cache
+compartilhado de rate-limit por conta em `${CLAUDE_CONFIG_DIR:-$HOME/.claude}/rate-limit-cache.json`
+(o `CLAUDE_CONFIG_DIR` de cada perfil isola o cache — contas nunca cruzam). O objetivo
+do cache é que terminais diferentes da MESMA conta convirjam para o valor real, já que
+cada sessão do Claude Code só enxerga o snapshot de rate-limit que ela mesma recebeu.
+
+**Bug (o erro a NÃO repetir)**: a primeira versão do cache guardava o **maior**
+`used_percentage` por janela (`resets_at`), assumindo *"uso só cresce até resetar"*.
+Essa premissa é falsa. `used_percentage` = uso ÷ **limite**; quando a Anthropic
+**aumenta o limite no meio da janela**, o mesmo uso vira um % **menor**, na MESMA
+janela → o max-clamp trava no valor velho e a **baseline nunca desce**. Sintoma real
+observado (2026-07-02): cache preso em 5% enquanto o uso real era 1–2%.
+
+**Causa raiz conceitual**: staleness (terminal ocioso mostra valor velho/**baixo**) e
+aumento-de-limite (valor real **caiu**) são o MESMO problema com sinais opostos. "Maior
+vence" resolve o primeiro e quebra o segundo. O sinal correto para desempatar não é
+"qual % é maior", é **"qual reporte é o mais recente"** (= qual sessão falou com o
+servidor por último).
+
+**Correção — recência-por-sessão**: o cache passa a guardar, por janela, um mapa
+`sessions[<session_id>] = {pct, at}`, onde `at` é o epoch da última vez que aquele pct
+**mudou** para aquela sessão (`session_id` é campo estável do stdin da statusLine;
+fallback bucket único `"_"`). A cada tick: se o pct do stdin difere do guardado para a
+sessão → grava e carimba `at=agora`; se é igual → mantém o `at` antigo (o terminal
+ocioso "envelhece" e nunca ganha). O valor **exibido** é o pct da sessão com o `at` mais
+recente. Rollover (novo `resets_at`) zera o mapa; poda por TTL (6h) descarta terminais
+fechados. Resultado: sobe quando você usa, e **desce quando o limite aumenta** — sempre
+o valor mais fresco.
+
+Junto foram corrigidos, no mesmo edit: cache corrompido agora se auto-repara (antes o
+bloco de escrita era pulado e o cache ficava morto até deleção manual); janela expirada
+não mostra mais % fantasma; `resets_at` em formato inesperado (ex.: ISO-8601) degrada
+sem derrubar o script.
+
+**Invariante que qualquer edição futura deve preservar**: o caminho do cache e o do
+`.claude.json` continuam ancorados em `CLAUDE_CONFIG_DIR` — é isso que dá o isolamento
+por conta. NÃO hardcode `~/.claude`. E **não reverta para "maior % vence"** por parecer
+mais simples: aquilo trava a baseline (ver bug acima). Backup do script pré-correção:
+`~/.claude/statusline/backups/statusline-command.sh.bak-20260702-114738`.
+
+**Post-mortem (mesmo dia, 2026-07-02 à tarde)** — a primeira implementação da revisão 9
+introduziu dois defeitos novos, corrigidos numa segunda passada (restaurou-se o backup e
+reaplicou-se a correção). Lições para NÃO repetir:
+
+1. **Nunca ler campos tab-separados com `IFS=$'\t' read` quando algum campo pode ser
+   vazio.** Tab é "IFS whitespace" no bash: campos vazios à esquerda COLAPSAM e todos os
+   valores deslizam de posição. Sintoma real: a janela 5h expirou, foi omitida (campos
+   vazios na frente do @tsv), e o pct/reset da janela SEMANAL apareceu dentro do
+   segmento 5h ("5h 7% (6h49m restantes)" — impossível para uma janela de 5 horas — e o
+   7d sumiu). Correção: um valor por LINHA (`read` por linha preserva vazios), nunca
+   `@tsv` + IFS-tab quando há campos opcionais.
+2. **Não omitir janela expirada da exibição.** O usuário QUER ver o contador descer até
+   "0m restantes" e ficar lá — é assim que ele sabe que o limite reiniciou. Janela
+   expirada continua exibida com o último pct até chegar reporte da janela nova
+   (rollover). Omitir era regressão de UX além de ter disparado o bug 1.
+3. **Poda por TTL deve usar "última vez VISTO" (`seen`), não "última MUDANÇA" (`at`).**
+   `at` fica propositalmente velho quando o pct não muda; podar por `at` removeria
+   sessões ATIVAS de pct estável (a janela semanal muda devagar). O schema tem os dois
+   campos: `at` decide quem é exibido, `seen` decide quem é podado.
+
+Snapshot da versão defeituosa (referência): `~/.claude/statusline/backups/statusline-command.sh.bak-broken-20260702-151800`.
+Harness de teste (23 cenários, incluindo os de regressão acima): reconstruível a partir
+deste post-mortem; rodar cada cenário com `CLAUDE_CONFIG_DIR` temporário e stdin sintético.
+
+## Revisão 10 — statusLine: dados frescos via API OAuth + refreshInterval por perfil (2026-07-02)
+
+A barra de rate-limit mostrava 33% com uso real de 88%: o stdin da statusLine só
+atualiza quando a própria sessão fala com o modelo — sessão ociosa nunca fica sabendo do
+uso feito em outros dispositivos da conta. Correção na statusline global
+(`~/.claude/statusline-command.sh`): fetch em background da mesma API que o painel
+`/usage` usa (`https://api.anthropic.com/api/oauth/usage`), TTL 60s, cache
+`usage-api-cache.json` **por conta** (ancorado em `CLAUDE_CONFIG_DIR`, como o resto).
+
+Pontos que tocam o ai-profile:
+
+1. **Credencial por perfil no Keychain**: com `CLAUDE_CONFIG_DIR` setado, o Claude Code
+   guarda o token OAuth no item `Claude Code-credentials-<sha256(config_dir)[0:8]>`
+   (verificado: `c274f3fc` = sha256 de `~/.ai-profiles/claude-20260621175425-hilw`).
+   O fetcher da statusline deriva o sufixo do env e **nunca** cai para o item da conta
+   principal — fallback cruzado mostraria o uso de outra conta na barra do perfil.
+   Nunca imprimir nem renovar o token (renovar por fora pode invalidar a sessão do CLI).
+2. **`statusLine.refreshInterval` precisa existir no `settings.json` DO PERFIL** (o
+   global `~/.claude/settings.json` não vale para perfis isolados — `CLAUDE_CONFIG_DIR`
+   substitui o diretório inteiro). Sem ele a linha só re-renderiza em evento: countdown
+   congelado e fetch nunca disparado em sessão ociosa. Adicionado `refreshInterval: 3`
+   ao perfil existente; **perfis novos de claude devem incluir o campo** se quiserem o
+   relógio correndo.
+
+Docs completas da revisão (fetch, lock, pseudo-sessão `__api__`, indicador `↻`):
+`~/.claude/statusline/` (repo git próprio da statusline — ver ADR.md lá, revisões 10 e 11).
+
 ## Alternativas consideradas
 
 - **Diretório nomeado igual ao alias original** (revisão 1, descrita
