@@ -334,6 +334,36 @@ Pontos que tocam o ai-profile:
 Docs completas da revisão (fetch, lock, pseudo-sessão `__api__`, indicador `↻`):
 `~/.claude/statusline/` (repo git próprio da statusline — ver ADR.md lá, revisões 10 e 11).
 
+## Revisão 11 — herdar `AGENTS.md` global nos perfis Codex (2026-08-24)
+
+**Problema**: o isolamento de contas do Codex usa `CODEX_HOME`, mas essa
+variável não controla só `auth.json`. O Codex também procura as instruções
+globais em `<CODEX_HOME>/AGENTS.override.md` ou `<CODEX_HOME>/AGENTS.md`.
+Consequentemente, um perfil em `~/.ai-profiles/codex-<id>` deixava de carregar
+as instruções de `~/.codex`, sem aviso.
+
+**Decisão**: antes de `run` e `acp`, criar no perfil links simbólicos para os
+arquivos de instrução que existirem no home padrão `~/.codex`. O login e o
+restante do estado continuam isolados; a orientação global passa a ter uma
+única fonte de verdade e uma edição vale para a próxima sessão de todos os
+perfis.
+
+Se o destino já existir — arquivo normal ou link — o módulo não o altera.
+Isso preserva instruções deliberadamente específicas por conta e evita
+sobrescrever trabalho do usuário. A sincronização roda no uso, não só no
+`new`, para também corrigir perfis criados por versões anteriores.
+
+A criação do link é verificada antes de abrir o Codex. Uma falha real
+(permissão, filesystem sem suporte etc.) interrompe o lançamento com erro,
+em vez de iniciar silenciosamente sem as instruções. A única falha tolerada
+é a corrida em que outra sessão criou o mesmo destino entre a verificação e
+o `ln`.
+
+**Limite conhecido**: essa é uma compensação do launcher. Uma separação
+nativa entre diretório de autenticação e diretório de configuração no Codex
+eliminaria a necessidade dos links, mas não existe uma variável pública
+separada para isso na versão avaliada.
+
 ## Alternativas consideradas
 
 - **Diretório nomeado igual ao alias original** (revisão 1, descrita

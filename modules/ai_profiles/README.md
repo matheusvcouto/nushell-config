@@ -47,6 +47,20 @@ Na primeira vez que você roda `ai-profile <tool> run <nome>`, a CLI não tem
 login ainda — faça o login normal dela dentro dessa sessão (ex: `/login`
 no Claude) escolhendo a conta certa. Fica salvo isolado daquele perfil.
 
+## Instruções globais do Codex
+
+O Codex procura `AGENTS.override.md` ou `AGENTS.md` dentro do `CODEX_HOME`.
+Como cada conta usa um `CODEX_HOME` isolado, o módulo cria automaticamente
+links simbólicos no perfil para os arquivos existentes em `~/.codex` ao
+executar `run` ou `acp`. Assim, o `auth.json` continua separado, enquanto as
+instruções globais continuam iguais às de uma execução normal do Codex.
+
+Um `AGENTS.md` ou `AGENTS.override.md` já existente no próprio perfil nunca
+é substituído. Isso permite instruções específicas por conta: remova o link
+e crie um arquivo normal no mesmo caminho. O Codex monta a cadeia de
+instruções no início da sessão, portanto reinicie a sessão depois de alterar
+esses arquivos.
+
 ## statusLine
 
 Cada perfil tem seu próprio `settings.json` isolado (é o que `CLAUDE_CONFIG_DIR`/

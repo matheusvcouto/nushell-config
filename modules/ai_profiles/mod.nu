@@ -245,6 +245,42 @@ def existing-profile-dir [
     profile-path $tool $profile
 }
 
+# CODEX_HOME isola mais que a credencial: ele também muda onde o Codex
+# procura as instruções globais. Mantém auth.json separado por perfil, mas
+# faz cada perfil herdar os dois arquivos de guidance do home padrão. Links
+# simbólicos deixam alterações em ~/.codex valerem na próxima sessão e não
+# sobrescrevem um arquivo que o usuário tenha criado especificamente no
+# perfil.
+def inherit-codex-global-guidance [
+    tool: string
+    profile_dir: string
+] {
+    if $tool == "codex" {
+        let global_dir = ("~/.codex" | path expand)
+
+        for filename in ["AGENTS.override.md" "AGENTS.md"] {
+            let source = ($global_dir | path join $filename)
+            let destination = ($profile_dir | path join $filename)
+
+            if ($source | path exists) and not ($destination | path exists --no-symlink) {
+                let link_result = (^ln -s $source $destination | complete)
+
+                # Duas sessões podem tentar criar o mesmo link ao mesmo
+                # tempo. Se o destino passou a existir, a outra ganhou a
+                # corrida e está tudo certo; qualquer outra falha deve
+                # impedir o Codex de abrir sem as instruções esperadas.
+                if $link_result.exit_code != 0 and not ($destination | path exists --no-symlink) {
+                    let detail = ($link_result.stderr | str trim)
+                    let detail_suffix = if ($detail | is-empty) { "" } else { $": ($detail)" }
+                    error make {
+                        msg: $"Não foi possível herdar ($source) em ($destination)($detail_suffix)"
+                    }
+                }
+            }
+        }
+    }
+}
+
 def create-profile [
     tool: string
     profile: string
@@ -355,6 +391,7 @@ def run-tool-profile [
     }
 
     let dir = (existing-profile-dir $tool $profile)
+    inherit-codex-global-guidance $tool $dir
 
     let overrides = (
         $spec.clear_env
@@ -394,6 +431,7 @@ def acp-tool-profile [
     }
 
     let dir = (existing-profile-dir $tool $profile)
+    inherit-codex-global-guidance $tool $dir
 
     let overrides = (
         $spec.clear_env
