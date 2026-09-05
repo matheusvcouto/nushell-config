@@ -219,6 +219,27 @@ def profile-list [
     read-profile-map | where tool == $tool | get alias | sort
 }
 
+# Formato público da ação `list`. Além do alias, mostra a variável que a
+# CLI reconhece e o diretório que deve ser usado como valor. `profile-list`
+# continua retornando apenas aliases porque também é usado internamente por
+# autocomplete e validação.
+def profile-list-details [
+    tool: string
+] {
+    let config_env = (tool-spec $tool | get config_env)
+
+    read-profile-map
+    | where tool == $tool
+    | sort-by alias
+    | each {|entry|
+        {
+            profile: $entry.alias
+            env: $config_env
+            dir: ($entry.dir | path expand)
+        }
+    }
+}
+
 def profile-list-message [
     profiles: list<string>
 ] {
@@ -509,7 +530,7 @@ export def --wrapped "ai-profile" [
     tool-spec $tool | ignore
 
     match $action {
-        "list" => (profile-list $tool)
+        "list" => (profile-list-details $tool)
         "new" => {
             let name = ($rest | get --optional 0)
             if $name == null {

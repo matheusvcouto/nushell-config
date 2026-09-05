@@ -22,7 +22,11 @@ ai-profile <tool> apply-statusline <nome> [template]   # ver seção "statusLine
 ```
 
 `list` é o padrão se você omitir a ação (`ai-profile claude` == `ai-profile
-claude list`).
+claude list`). A saída inclui o nome do perfil, a variável de ambiente usada
+pela CLI e o diretório de configuração correspondente. Por exemplo,
+`ai-profile codex list` mostra o `CODEX_HOME` de cada perfil; assim esse mesmo
+perfil pode ser selecionado em outro projeto configurando `CODEX_HOME` com o
+valor exibido na coluna `dir`.
 
 ## Exemplos
 
@@ -32,6 +36,12 @@ ai-profile claude run mae
 ai-profile claude rename mae monica
 ai-profile claude acp monica           # servidor ACP do claude, perfil monica
 ai-profile codex acp work              # servidor ACP do codex, perfil work
+```
+
+Exemplo de uso direto de um perfil listado, sem passar por `ai-profile run`:
+
+```
+with-env { CODEX_HOME: "/caminho/exibido/em/dir" } { codex }
 ```
 
 ## ACP
