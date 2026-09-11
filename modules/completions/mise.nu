@@ -56,8 +56,8 @@ export def mise_completer [spans: list<string>] {
         if ($partial | is-empty) {
             $all_candidates
         } else {
-            let needle = ($partial | str downcase)
-            $all_candidates | where {|opt| ($opt.value | str downcase) | str starts-with $needle}
+            let needle = ($partial | str lowercase)
+            $all_candidates | where {|opt| ($opt.value | str lowercase) | str starts-with $needle}
         }
     } else {
         null

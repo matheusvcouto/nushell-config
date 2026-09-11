@@ -69,9 +69,9 @@ export def deno_completer [spans: list<string>] {
         if ($partial | is-empty) {
             $candidates | sort-by value
         } else {
-            let search_term = ($partial | str downcase)
+            let search_term = ($partial | str lowercase)
             $candidates
-                | where {|opt| ($opt.value | str downcase) | str contains $search_term}
+                | where {|opt| ($opt.value | str lowercase) | str contains $search_term}
                 | sort-by value
         }
     } else if $subcommand == "run" {
@@ -103,9 +103,9 @@ export def deno_completer [spans: list<string>] {
         let candidates = if ($partial | is-empty) {
             $filtered_files
         } else {
-            let search_term = ($partial | str downcase)
+            let search_term = ($partial | str lowercase)
             $filtered_files
-                | where {|opt| ($opt.value | str downcase) | str contains $search_term}
+                | where {|opt| ($opt.value | str lowercase) | str contains $search_term}
         }
 
         $candidates | sort-by {|opt|

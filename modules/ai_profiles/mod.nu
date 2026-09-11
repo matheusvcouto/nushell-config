@@ -189,7 +189,7 @@ def new-profile-dir [
     tool: string
 ] {
     let stamp = (date now | format date "%Y%m%d%H%M%S")
-    let suffix = (random chars --length 4 | str downcase)
+    let suffix = (random chars --length 4 | str lowercase)
     $"(profiles-root-path)/($tool)-($stamp)-($suffix)"
 }
 
@@ -377,7 +377,7 @@ def delete-profile [
         }
     }
 
-    let answer = (input "Confirmar exclusão? [y/N]: " | str downcase)
+    let answer = (input "Confirmar exclusão? [y/N]: " | str lowercase)
     if $answer not-in ["y", "yes"] {
         error make {
             msg: "Exclusão cancelada"

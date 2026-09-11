@@ -71,9 +71,9 @@ export def bun_completer [spans: list<string>] {
         let candidates = if ($partial | is-empty) {
             $all_options
         } else {
-            let search_term = ($partial | str downcase)
+            let search_term = ($partial | str lowercase)
             $all_options 
-                | where {|opt| ($opt.value | str downcase) | str contains $search_term}
+                | where {|opt| ($opt.value | str lowercase) | str contains $search_term}
         }
         
         # Ordenação: Prioridade (Scripts) -> Profundidade (Arquivos próximos) -> Nome

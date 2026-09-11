@@ -64,5 +64,7 @@ $env.PATH = (
 # Gera o módulo de ativação oficial do Nushell.
 let mise_path = $nu.default-config-dir | path join "mise.nu"
 if (which mise | is-not-empty) {
-    ^mise activate nu | save $mise_path --force
+    ^mise activate nu
+    | str replace --all "str upcase" "str uppercase"
+    | save $mise_path --force
 }

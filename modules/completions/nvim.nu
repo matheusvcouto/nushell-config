@@ -24,7 +24,7 @@ def is-excluded-dir [relative: string] {
 }
 
 def is-binary-like [relative: string] {
-    let lowered = ($relative | str downcase)
+    let lowered = ($relative | str lowercase)
     let blocked_exts = [
         ".png" ".jpg" ".jpeg" ".gif" ".webp" ".ico" ".svg"
         ".mp4" ".mov" ".avi" ".mkv" ".webm"
@@ -91,7 +91,7 @@ def match-paths [paths: list<string>, needle: string] {
         $paths | first 120
     } else {
         $paths
-        | where {|path| ($path | str downcase) | str contains $needle}
+        | where {|path| ($path | str lowercase) | str contains $needle}
         | first 120
     }
 }
@@ -121,7 +121,7 @@ export def nvim_completer [spans: list<string>] {
 
     let partial = ($full_spans | get --optional 1 | default "")
     let depth = if ($partial | str contains "/") { 8 } else { 4 }
-    let needle = ($partial | str downcase)
+    let needle = ($partial | str lowercase)
 
     let git_paths = (git-files)
     let discovered_paths = (if ($git_paths | is-empty) {
