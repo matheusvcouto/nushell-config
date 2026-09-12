@@ -1,4 +1,4 @@
-# repo-zip
+# nu-repo-zip
 
 Módulo Nushell para criar snapshots ZIP de repositórios Git sem incluir arquivos ignorados pelo Git.
 
@@ -6,7 +6,7 @@ Módulo Nushell para criar snapshots ZIP de repositórios Git sem incluir arquiv
 
 ```text
 modules/repo_zip/
-├── mod.nu       # API pública: repo-zip
+├── mod.nu       # API pública: nu-repo-zip
 ├── git.nu       # leitura/validação do repositório Git
 ├── archive.nu   # criação e verificação do ZIP
 ├── naming.nu    # nomes, sufixos e paths
@@ -14,19 +14,19 @@ modules/repo_zip/
 └── README.md
 ```
 
-Somente `repo-zip` é exportado pelo `mod.nu`; os demais arquivos são implementação interna.
+Somente `nu-repo-zip` é exportado pelo `mod.nu`; os demais arquivos são implementação interna.
 
 ## Uso
 
 ```nu
-repo-zip
-repo-zip .
-repo-zip minha-pasta -o aqui.zip
-repo-zip . --name snapshot
-repo-zip . -v v1.2.0
-repo-zip . --git
-repo-zip . --git -v v2
-repo-zip . --git -o aqui.zip
+nu-repo-zip
+nu-repo-zip .
+nu-repo-zip minha-pasta -o aqui.zip
+nu-repo-zip . --name snapshot
+nu-repo-zip . -v v1.2.0
+nu-repo-zip . --git
+nu-repo-zip . --git -v v2
+nu-repo-zip . --git -o aqui.zip
 ```
 
 ### Saída padrão
@@ -40,7 +40,7 @@ repo-zip . --git -o aqui.zip
 Define exatamente o destino, relativo ao diretório atual quando for um path relativo:
 
 ```nu
-repo-zip minha-pasta -o aqui.zip
+nu-repo-zip minha-pasta -o aqui.zip
 ```
 
 Gera `./aqui.zip`.
@@ -48,7 +48,7 @@ Gera `./aqui.zip`.
 Se o destino já existir, o comando aborta. Para substituí-lo explicitamente:
 
 ```nu
-repo-zip . -o aqui.zip --force
+nu-repo-zip . -o aqui.zip --force
 ```
 
 Mesmo com `--force`, um destino tracked pelo Git ou dentro de `.git` é recusado.
@@ -58,7 +58,7 @@ Mesmo com `--force`, um destino tracked pelo Git ou dentro de `.git` é recusado
 Inclui o diretório `.git` no ZIP. No nome automático, adiciona o hash curto do `HEAD`:
 
 ```nu
-repo-zip . --git
+nu-repo-zip . --git
 ```
 
 Exemplo:
@@ -76,16 +76,16 @@ Com mudanças não commitadas:
 Com `-o`, o nome informado é respeitado exatamente:
 
 ```nu
-repo-zip . --git -o backup.zip
+nu-repo-zip . --git -o backup.zip
 ```
 
 ### Versão / sufixo
 
 ```nu
-repo-zip . -v v1.2.0
-repo-zip . --version v1.2.0
-repo-zip . -s backup
-repo-zip . --suffix backup
+nu-repo-zip . -v v1.2.0
+nu-repo-zip . --version v1.2.0
+nu-repo-zip . -s backup
+nu-repo-zip . --suffix backup
 ```
 
 `--version` e `--suffix` são alternativas; não podem ser usados juntos.
@@ -93,7 +93,7 @@ repo-zip . --suffix backup
 Com `--git`:
 
 ```nu
-repo-zip . --git -v v2
+nu-repo-zip . --git -v v2
 ```
 
 pode gerar:

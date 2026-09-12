@@ -6,8 +6,8 @@ alias n = nvim
 
 # Configuração de completions externas para bun run (scripts + arquivos)
 use modules/completions [external_completer]
-use modules/ai_profiles [ai-profile]
-use modules/repo_zip [repo-zip]
+use modules/ai_profiles [nu-ai-profile]
+use modules/repo_zip [nu-repo-zip]
 
 $env.config.completions.external = {
     enable: true

@@ -2,7 +2,7 @@
 #
 # Cria snapshots ZIP de repositórios Git respeitando as regras reais de ignore.
 # Os helpers ficam separados em common.nu, naming.nu, git.nu e archive.nu.
-# Apenas `repo-zip` é exportado por este módulo.
+# Apenas `nu-repo-zip` é exportado por este módulo.
 
 use ../platform [require-runtime]
 use ./common.nu [fail]
@@ -27,21 +27,21 @@ const DEFAULT_OUTPUT_DIR = ".tmp/unzip"
 # Cria um ZIP de um repositório Git.
 #
 # Exemplos:
-#   repo-zip
-#   repo-zip .
-#   repo-zip minha-pasta -o aqui.zip
-#   repo-zip . --name snapshot
-#   repo-zip . -v v1.2.0
-#   repo-zip . --git
-#   repo-zip . --git -v v2
-#   repo-zip . --git -o aqui.zip
+#   nu-repo-zip
+#   nu-repo-zip .
+#   nu-repo-zip minha-pasta -o aqui.zip
+#   nu-repo-zip . --name snapshot
+#   nu-repo-zip . -v v1.2.0
+#   nu-repo-zip . --git
+#   nu-repo-zip . --git -v v2
+#   nu-repo-zip . --git -o aqui.zip
 #
 # Sem -o, saída padrão:
 #   <repo>/.tmp/unzip/<nome>.zip
 #
 # --git inclui .git e acrescenta <hash>[-dirty] somente ao nome automático.
 # -o/--output é sempre respeitado exatamente como informado.
-export def repo-zip [
+export def nu-repo-zip [
     source?: path
     --output (-o): path
     --name (-n): string
@@ -51,16 +51,16 @@ export def repo-zip [
     --force (-f)
 ] {
     require-runtime {
-        name: "repo-zip"
+        name: "nu-repo-zip"
         support: {
             macos: { status: "supported" }
             linux: {
                 status: "unsupported"
-                reason: "repo-zip ainda não foi implementado/testado no Linux"
+                reason: "nu-repo-zip ainda não foi implementado/testado no Linux"
             }
             windows: {
                 status: "unsupported"
-                reason: "repo-zip ainda não foi implementado/testado no Windows"
+                reason: "nu-repo-zip ainda não foi implementado/testado no Windows"
             }
             default: {
                 status: "unsupported"
@@ -205,7 +205,7 @@ export def repo-zip [
 
     # O temporário fica no mesmo filesystem/diretório do destino para que a
     # publicação final seja um rename, não uma cópia parcial do ZIP.
-    let temp_name = $".($output_path | path basename).repo-zip-(random uuid).tmp.zip"
+    let temp_name = $".($output_path | path basename).nu-repo-zip-(random uuid).tmp.zip"
     let temp_zip = ($output_parent | path join $temp_name)
     let temp_rel = (relative-if-inside $temp_zip $repo_root)
 

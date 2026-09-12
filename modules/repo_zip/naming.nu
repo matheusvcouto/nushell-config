@@ -1,4 +1,4 @@
-# Validação e composição de nomes/caminhos usados pelo repo-zip.
+# Validação e composição de nomes/caminhos usados pelo nu-repo-zip.
 
 use ./common.nu [fail]
 

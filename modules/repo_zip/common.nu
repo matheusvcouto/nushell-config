@@ -1,7 +1,7 @@
 # Helpers internos compartilhados pelo módulo repo_zip.
 
 export def fail [message: string] {
-    error make { msg: $"repo-zip: ($message)" }
+    error make { msg: $"nu-repo-zip: ($message)" }
 }
 
 export def external-detail [result: record] {

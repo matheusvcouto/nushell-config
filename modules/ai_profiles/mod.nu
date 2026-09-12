@@ -2,12 +2,12 @@
 #
 # Um único comando genérico (lê TOOLS, nenhum código duplicado por CLI):
 #
-#   ai-profile <tool> list
-#   ai-profile <tool> new <nome>
-#   ai-profile <tool> rename <antigo> <novo>
-#   ai-profile <tool> delete <nome>
-#   ai-profile <tool> run <perfil> ...args     -- roda a CLI isolada
-#   ai-profile <tool> acp <perfil> ...args     -- lança o agente ACP isolado
+#   nu-ai-profile <tool> list
+#   nu-ai-profile <tool> new <nome>
+#   nu-ai-profile <tool> rename <antigo> <novo>
+#   nu-ai-profile <tool> delete <nome>
+#   nu-ai-profile <tool> run <perfil> ...args     -- roda a CLI isolada
+#   nu-ai-profile <tool> acp <perfil> ...args     -- lança o agente ACP isolado
 #
 # Pra adicionar uma CLI nova, só uma entrada em TOOLS (ver abaixo) — nenhum
 # comando novo precisa ser escrito. ACP é opcional por tool (campo `acp`).
@@ -145,7 +145,7 @@ def nu-complete-statusline-templates [] {
 }
 
 # Completer usado pra qualquer argumento que represente um nome de perfil
-# (no "run" e no "rename"/"delete" do ai-profile). Acha a CLI já digitada
+# (no "run" e no "rename"/"delete" do nu-ai-profile). Acha a CLI já digitada
 # olhando os tokens da linha — nesses comandos o tool é sempre um argumento
 # literal (não escondido atrás de alias), então não tem ambiguidade.
 def nu-complete-profile-arg [context: string] {
@@ -404,7 +404,7 @@ def run-tool-profile [
 ] {
     let spec = (tool-spec $tool)
     require-runtime {
-        name: $"ai-profile ($tool) run"
+        name: $"nu-ai-profile ($tool) run"
         support: ($spec.support?.run? | default {
             default: "unsupported"
             reason: $"TOOLS não define support.run para ($tool)"
@@ -444,7 +444,7 @@ def acp-tool-profile [
         }
     }
     require-runtime {
-        name: $"ai-profile ($tool) acp"
+        name: $"nu-ai-profile ($tool) acp"
         support: ($spec.support?.acp? | default {
             default: "unsupported"
             reason: $"TOOLS não define support.acp para ($tool)"
@@ -519,10 +519,10 @@ def apply-statusline-to-profile [
 
 # --wrapped é necessário pro "run" poder repassar flags soltas (ex: --print
 # "oi") direto pra CLI de verdade, sem o Nushell tentar interpretá-las como
-# flags do próprio ai-profile. tool/action continuam posicionais tipados com
+# flags do próprio nu-ai-profile. tool/action continuam posicionais tipados com
 # completer normal — --wrapped só afeta como os tokens finais (...rest) são
 # tratados, não os primeiros argumentos.
-export def --wrapped "ai-profile" [
+export def --wrapped "nu-ai-profile" [
     tool: string@nu-complete-tools
     action: string@nu-complete-actions = "list"
     ...rest: string@nu-complete-profile-arg
@@ -534,7 +534,7 @@ export def --wrapped "ai-profile" [
         "new" => {
             let name = ($rest | get --optional 0)
             if $name == null {
-                error make { msg: "uso: ai-profile <tool> new <nome>" }
+                error make { msg: "uso: nu-ai-profile <tool> new <nome>" }
             }
             create-profile $tool $name
         }
@@ -542,28 +542,28 @@ export def --wrapped "ai-profile" [
             let old = ($rest | get --optional 0)
             let new = ($rest | get --optional 1)
             if $old == null or $new == null {
-                error make { msg: "uso: ai-profile <tool> rename <antigo> <novo>" }
+                error make { msg: "uso: nu-ai-profile <tool> rename <antigo> <novo>" }
             }
             rename-profile $tool $old $new
         }
         "delete" => {
             let name = ($rest | get --optional 0)
             if $name == null {
-                error make { msg: "uso: ai-profile <tool> delete <nome>" }
+                error make { msg: "uso: nu-ai-profile <tool> delete <nome>" }
             }
             delete-profile $tool $name
         }
         "run" => {
             let profile = ($rest | get --optional 0)
             if $profile == null {
-                error make { msg: "uso: ai-profile <tool> run <perfil> [...args]" }
+                error make { msg: "uso: nu-ai-profile <tool> run <perfil> [...args]" }
             }
             run-tool-profile $tool $profile ($rest | skip 1)
         }
         "acp" => {
             let profile = ($rest | get --optional 0)
             if $profile == null {
-                error make { msg: "uso: ai-profile <tool> acp <perfil> [...args]" }
+                error make { msg: "uso: nu-ai-profile <tool> acp <perfil> [...args]" }
             }
             acp-tool-profile $tool $profile ($rest | skip 1)
         }
@@ -571,7 +571,7 @@ export def --wrapped "ai-profile" [
             let profile = ($rest | get --optional 0)
             let template = ($rest | get --optional 1 | default "default")
             if $profile == null {
-                error make { msg: "uso: ai-profile <tool> apply-statusline <perfil> [template]" }
+                error make { msg: "uso: nu-ai-profile <tool> apply-statusline <perfil> [template]" }
             }
             apply-statusline-to-profile $tool $profile $template
         }

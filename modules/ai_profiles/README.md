@@ -1,4 +1,4 @@
-# ai-profile
+# nu-ai-profile
 
 Contas isoladas (Pro pessoal vs. de um familiar, por exemplo) para CLIs de
 IA, sem conflito de sessão. Um único comando cobre qualquer CLI configurada
@@ -12,33 +12,33 @@ Use o `agy` direto, sem perfil. Detalhes em `agy-keychain-issue.md`.
 ## Uso
 
 ```
-ai-profile <tool> list
-ai-profile <tool> new <nome>
-ai-profile <tool> rename <nome-antigo> <nome-novo>
-ai-profile <tool> delete <nome>
-ai-profile <tool> run <nome> ...args
-ai-profile <tool> acp <nome> ...args   # lança o agente ACP isolado (só tools com ACP)
-ai-profile <tool> apply-statusline <nome> [template]   # ver seção "statusLine" abaixo
+nu-ai-profile <tool> list
+nu-ai-profile <tool> new <nome>
+nu-ai-profile <tool> rename <nome-antigo> <nome-novo>
+nu-ai-profile <tool> delete <nome>
+nu-ai-profile <tool> run <nome> ...args
+nu-ai-profile <tool> acp <nome> ...args   # lança o agente ACP isolado (só tools com ACP)
+nu-ai-profile <tool> apply-statusline <nome> [template]   # ver seção "statusLine" abaixo
 ```
 
-`list` é o padrão se você omitir a ação (`ai-profile claude` == `ai-profile
+`list` é o padrão se você omitir a ação (`nu-ai-profile claude` == `nu-ai-profile
 claude list`). A saída inclui o nome do perfil, a variável de ambiente usada
 pela CLI e o diretório de configuração correspondente. Por exemplo,
-`ai-profile codex list` mostra o `CODEX_HOME` de cada perfil; assim esse mesmo
+`nu-ai-profile codex list` mostra o `CODEX_HOME` de cada perfil; assim esse mesmo
 perfil pode ser selecionado em outro projeto configurando `CODEX_HOME` com o
 valor exibido na coluna `dir`.
 
 ## Exemplos
 
 ```
-ai-profile claude new mae
-ai-profile claude run mae
-ai-profile claude rename mae monica
-ai-profile claude acp monica           # servidor ACP do claude, perfil monica
-ai-profile codex acp work              # servidor ACP do codex, perfil work
+nu-ai-profile claude new mae
+nu-ai-profile claude run mae
+nu-ai-profile claude rename mae monica
+nu-ai-profile claude acp monica           # servidor ACP do claude, perfil monica
+nu-ai-profile codex acp work              # servidor ACP do codex, perfil work
 ```
 
-Exemplo de uso direto de um perfil listado, sem passar por `ai-profile run`:
+Exemplo de uso direto de um perfil listado, sem passar por `nu-ai-profile run`:
 
 ```
 with-env { CODEX_HOME: "/caminho/exibido/em/dir" } { codex }
@@ -46,14 +46,14 @@ with-env { CODEX_HOME: "/caminho/exibido/em/dir" } { codex }
 
 ## ACP
 
-`ai-profile <tool> acp <nome>` lança o adapter ACP daquele tool com o
+`nu-ai-profile <tool> acp <nome>` lança o adapter ACP daquele tool com o
 mesmo isolamento por perfil, falando JSON-RPC por stdio (pra ser spawnado
 por um cliente ACP). Só funciona em tools que declaram o campo `acp` no
 `TOOLS` — hoje `claude` (via `claude-agent-acp`) e `codex` (via
 `codex-acp`). Detalhes e o registry tool×profile no app cliente:
 `acp-integration.md`.
 
-Na primeira vez que você roda `ai-profile <tool> run <nome>`, a CLI não tem
+Na primeira vez que você roda `nu-ai-profile <tool> run <nome>`, a CLI não tem
 login ainda — faça o login normal dela dentro dessa sessão (ex: `/login`
 no Claude) escolhendo a conta certa. Fica salvo isolado daquele perfil.
 
@@ -76,7 +76,7 @@ esses arquivos.
 Cada perfil tem seu próprio `settings.json` isolado (é o que `CLAUDE_CONFIG_DIR`/
 `CODEX_HOME` aponta pra ele). Por isso a chave `statusLine` do seu
 `settings.json` global (`~/.claude/settings.json`) **não** aparece quando
-você roda `ai-profile claude run <nome>` — o perfil nunca lê o global.
+você roda `nu-ai-profile claude run <nome>` — o perfil nunca lê o global.
 
 `apply-statusline` resolve isso sem quebrar o isolamento: mescla só a chave
 `statusLine` (lida de um template em `statusline-templates/<nome>.json`,
@@ -85,8 +85,8 @@ dentro deste módulo) no `settings.json` do perfil, mantendo todo o resto
 roda em `new`/`run`/`acp`, só quando você chama:
 
 ```
-ai-profile claude apply-statusline monica            # usa statusline-templates/default.json
-ai-profile claude apply-statusline trabalho detalhado # usa statusline-templates/detalhado.json
+nu-ai-profile claude apply-statusline monica            # usa statusline-templates/default.json
+nu-ai-profile claude apply-statusline trabalho detalhado # usa statusline-templates/detalhado.json
 ```
 
 Templates diferentes permitem statuslines diferentes por perfil — crie um
@@ -96,9 +96,9 @@ do `settings.json`) e use o nome do arquivo (sem `.json`) como argumento.
 ## O que não fazer
 
 - Não mova/renomeie a pasta de um perfil manualmente (`~/.ai-profiles/...`).
-  Use `ai-profile <tool> rename`, que só troca o rótulo sem tocar na pasta
+  Use `nu-ai-profile <tool> rename`, que só troca o rótulo sem tocar na pasta
   — é assim que o login não se perde (detalhes em `adr.md`).
-- `ai-profile <tool> delete <nome>` apaga a pasta **permanentemente** (não
+- `nu-ai-profile <tool> delete <nome>` apaga a pasta **permanentemente** (não
   vai pra lixeira). Confirme o nome antes de aceitar.
 
 ## Adicionar uma CLI nova
