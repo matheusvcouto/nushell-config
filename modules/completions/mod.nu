@@ -29,7 +29,9 @@ export def external_completer [spans: list<string>] {
     })
 
     # Tenta encontrar um completer registrado que retorne um valor não-nulo
-    mut result = null
+    # Os completers retornam tabelas de sugestões; `any` também permite o
+    # estado inicial `null` enquanto nenhum deles se responsabiliza pelo input.
+    mut result: any = null
     for completer in $completers {
         let res = (do $completer $spans)
         if ($res != null) and not ($res | is-empty) {
